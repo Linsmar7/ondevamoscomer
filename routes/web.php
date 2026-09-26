@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 Route::get('/', function () {
-  return auth()->check() ? redirect()->route('dashboard') : view('welcome');
+  return view('welcome');
 });
 
 Route::middleware(['auth'])->group(function () {

@@ -3,7 +3,6 @@
 use App\Enums\PriceRange;
 use App\Models\Place;
 use App\Models\RestaurantList;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -78,15 +77,18 @@ new #[Layout('layouts.app')] class extends Component {
     if ($this->roulettePriceFilter !== 'all') {
       $rouletteQuery->where('price_range', $this->roulettePriceFilter);
     }
-    $rouletteCandidates = $rouletteQuery->get(['id', 'name', 'price_range', 'address']);
+    $rouletteCandidates = $rouletteQuery->get(['id', 'name', 'price_range', 'address', 'description']);
 
     $pickedPlace = $this->pickedPlaceId ? Place::find($this->pickedPlaceId) : null;
+
+    $lastVisitedPlace = $list->places()->where('visited', true)->latest('updated_at')->first();
 
     return [
       'list' => $list,
       'places' => $places,
       'rouletteCandidates' => $rouletteCandidates,
       'pickedPlace' => $pickedPlace,
+      'lastVisitedPlace' => $lastVisitedPlace,
       'priceRanges' => PriceRange::cases(),
     ];
   }
@@ -189,7 +191,7 @@ new #[Layout('layouts.app')] class extends Component {
       $this->pickedPlaceId = null;
     }
 
-    session()->flash('status', 'Restaurante removido.');
+    session()->flash('status', 'Restaurante removido com sucesso.');
   }
 
   /**
@@ -209,148 +211,187 @@ new #[Layout('layouts.app')] class extends Component {
 }; ?>
 
 <div
-  class="py-8"
+  class="flex flex-col w-full"
   x-data="{
-    showRouletteModal: false,
     candidates: {{ Js::from($rouletteCandidates) }},
     isSpinning: false,
-    currentAngle: 0,
-    selectedWinner: null,
-    showWinnerModal: false,
+    currentRotation: 0,
+    spinsCount: 0,
+    chosenWinner: {{ $pickedPlace ? Js::from($pickedPlace) : 'null' }},
+    copiedShare: false,
 
     init() {
       this.$watch('candidates', () => {
-        this.drawWheel();
+        this.renderSvgWheel();
       });
-      this.$nextTick(() => this.drawWheel());
+      this.$nextTick(() => {
+        this.renderSvgWheel();
+      });
     },
 
-    colors: [
-      '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6',
-      '#EC4899', '#06B6D4', '#F97316', '#6366F1', '#84CC16'
-    ],
+    colors: ['#141b2b', '#191f2f', '#232a3a', '#1e2433', '#2a3142'],
+    textColors: ['#ffc174', '#dce2f7', '#ffb2ba', '#ffc174', '#dce2f7'],
 
-    drawWheel() {
-      const canvas = document.getElementById('roulette-canvas');
-      if (!canvas || !this.candidates.length) return;
-      const ctx = canvas.getContext('2d');
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
-      const radius = canvas.width / 2 - 10;
+    renderSvgWheel() {
+      const container = document.getElementById('wheelSvgGroup');
+      if (!container) return;
+
+      container.innerHTML = '';
       const total = this.candidates.length;
-      const arcSize = (2 * Math.PI) / total;
+      if (total === 0) return;
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const angleStep = 360 / total;
+      const radius = 190;
 
-      this.candidates.forEach((cand, i) => {
-        const startAngle = this.currentAngle + (i * arcSize);
-        const endAngle = startAngle + arcSize;
+      for (let i = 0; i < total; i++) {
+        const startDeg = i * angleStep;
+        const endDeg = (i + 1) * angleStep;
+        const startRad = (startDeg * Math.PI) / 180;
+        const endRad = (endDeg * Math.PI) / 180;
 
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY);
-        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
-        ctx.fillStyle = this.colors[i % this.colors.length];
-        ctx.fill();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = '#ffffff';
-        ctx.stroke();
+        const x1 = radius * Math.cos(startRad);
+        const y1 = radius * Math.sin(startRad);
+        const x2 = radius * Math.cos(endRad);
+        const y2 = radius * Math.sin(endRad);
 
-        // Text
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.rotate(startAngle + arcSize / 2);
-        ctx.textAlign = 'right';
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 12px sans-serif';
-        const label = cand.name.length > 15 ? cand.name.substring(0, 15) + '...' : cand.name;
-        ctx.fillText(label, radius - 20, 4);
-        ctx.restore();
-      });
+        const largeArc = angleStep > 180 ? 1 : 0;
+        const pathData = total === 1
+          ? `M 0 0 m -${radius}, 0 a ${radius},${radius} 0 1,0 ${radius * 2},0 a ${radius},${radius} 0 1,0 -${radius * 2},0`
+          : `M 0 0 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
 
-      // Center Pin
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, 18, 0, 2 * Math.PI);
-      ctx.fillStyle = '#111827';
-      ctx.fill();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = '#ffffff';
-      ctx.stroke();
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', pathData);
+        path.setAttribute('fill', this.colors[i % this.colors.length]);
+        container.appendChild(path);
 
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 14px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('🍽️', centerX, centerY + 5);
+        // Divider line
+        if (total > 1) {
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', '0');
+          line.setAttribute('y1', '0');
+          line.setAttribute('x2', x1.toString());
+          line.setAttribute('y2', y1.toString());
+          line.setAttribute('stroke', '#2e3545');
+          line.setAttribute('stroke-width', '2');
+          container.appendChild(line);
+        }
+
+        // Segment label
+        const midDeg = startDeg + angleStep / 2;
+        const textG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        textG.setAttribute('transform', `rotate(${midDeg})`);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', (radius * 0.55).toString());
+        text.setAttribute('y', '5');
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('fill', this.textColors[i % this.textColors.length]);
+        text.setAttribute('font-family', 'Work Sans, sans-serif');
+        text.setAttribute('font-size', total > 8 ? '9' : (total > 4 ? '10' : '11'));
+        text.setAttribute('font-weight', '700');
+        text.setAttribute('letter-spacing', '0.5');
+
+        let name = this.candidates[i].name.toUpperCase();
+        if (name.length > 14) name = name.substring(0, 13) + '...';
+        text.textContent = name;
+
+        textG.appendChild(text);
+        container.appendChild(textG);
+      }
+
+      // Outer ring
+      const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      ring.setAttribute('cx', '0');
+      ring.setAttribute('cy', '0');
+      ring.setAttribute('r', radius.toString());
+      ring.setAttribute('fill', 'none');
+      ring.setAttribute('stroke', '#2e3545');
+      ring.setAttribute('stroke-width', '4');
+      container.appendChild(ring);
     },
 
     spinWheel() {
       if (this.isSpinning || this.candidates.length === 0) return;
       this.isSpinning = true;
-      this.showWinnerModal = false;
 
       const total = this.candidates.length;
-      const arcSize = (2 * Math.PI) / total;
+      const angleStep = 360 / total;
 
-      // Choose winner randomly
-      const winnerIndex = Math.floor(Math.random() * total);
-      const winner = this.candidates[winnerIndex];
+      const selectedIndex = Math.floor(Math.random() * total);
+      const chosen = this.candidates[selectedIndex];
 
-      // Calculate target angle so pointer at top (3 * PI / 2) points to winner segment
-      // Top pointer corresponds to angle 1.5 * Math.PI (270 deg)
-      const extraSpins = 6 + Math.floor(Math.random() * 4); // 6 to 9 full rotations
-      const targetAngleWithinArc = arcSize * 0.5; // center of slice
-      const targetSliceOffset = (total - winnerIndex) * arcSize - targetAngleWithinArc;
-      const targetAngle = this.currentAngle + (extraSpins * 2 * Math.PI) + targetSliceOffset + (1.5 * Math.PI);
+      // Top pointer is at 270 degrees
+      const extraSpins = (5 + Math.floor(Math.random() * 3)) * 360;
+      const chosenMidAngle = (selectedIndex * angleStep) + (angleStep / 2);
+      const targetOffset = (270 - chosenMidAngle + 360 * 10) % 360;
+      const currentMod = ((this.currentRotation % 360) + 360) % 360;
+      const delta = (targetOffset - currentMod + 360) % 360;
 
-      const startAngle = this.currentAngle;
-      const diffAngle = targetAngle - startAngle;
-      const duration = 5000;
-      const startTime = performance.now();
+      this.currentRotation += extraSpins + delta;
 
-      const animate = (currentTime) => {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
+      setTimeout(() => {
+        this.isSpinning = false;
+        this.spinsCount += 1;
+        this.chosenWinner = chosen;
+        $wire.selectWinner(chosen.id);
 
-        // Cubic ease-out function
-        const easeOut = 1 - Math.pow(1 - progress, 3);
-        this.currentAngle = startAngle + (diffAngle * easeOut);
-        this.drawWheel();
-
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        } else {
-          this.isSpinning = false;
-          this.selectedWinner = winner;
-          $wire.selectWinner(winner.id);
-          this.showWinnerModal = true;
-
-          // Trigger Confetti!
-          if (window.confetti) {
-            window.confetti({
-              particleCount: 100,
-              spread: 70,
-              origin: { y: 0.6 }
-            });
-          }
+        if (window.confetti) {
+          window.confetti({
+            particleCount: 120,
+            spread: 80,
+            origin: { y: 0.6 }
+          });
         }
-      };
+      }, 4000);
+    },
 
-      requestAnimationFrame(animate);
+    copyShareText() {
+      const winner = this.chosenWinner;
+      let text = '';
+      if (winner && winner.name) {
+        text = `Galera, a roleta do 'Onde Vamos Comer?' decidiu: hoje o rango é no ${winner.name}! Partiu?`;
+        if (winner.address) {
+          text += ` 📍 ${winner.address}`;
+        }
+      } else {
+        text = `Galera, bora decidir onde comer na lista '{{ $list->name }}'?`;
+      }
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+          this.copiedShare = true;
+          setTimeout(() => this.copiedShare = false, 2500);
+        });
+      }
     }
   }"
+  x-effect="
+    const attr = $el.getAttribute('data-candidates');
+    if (attr) {
+      try {
+        const parsed = JSON.parse(attr);
+        if (JSON.stringify(parsed) !== JSON.stringify(candidates)) {
+          candidates = parsed;
+          renderSvgWheel();
+        }
+      } catch (e) {}
+    }
+  "
+  data-candidates="{{ json_encode($rouletteCandidates) }}"
 >
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <!-- Back to Lists & Breadcrumb -->
-    <div class="mb-6 flex items-center justify-between">
+  <div class="max-w-7xl mx-auto w-full px-margin-mobile lg:px-margin py-space-xl">
+    <!-- Breadcrumb & Top Bar -->
+    <div class="flex items-center justify-between pb-space-md">
       <a
         href="{{ route('dashboard') }}"
         wire:navigate
-        class="inline-flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-rose-600 dark:text-gray-400 dark:hover:text-rose-400 transition"
+        class="inline-flex items-center gap-1.5 font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors"
       >
-        <span>←</span> Voltar para Minhas Listas
+        <span class="material-symbols-outlined text-sm">arrow_back</span>
+        <span>Voltar para Minhas Listas</span>
       </a>
 
-      <!-- Quick Share Invite Link Button -->
-      <div x-data="{ copied: false }" class="flex items-center gap-2">
+      <!-- Share List Invite Link -->
+      <div x-data="{ copied: false }" class="flex items-center gap-space-xs">
         <button
           type="button"
           @click="
@@ -358,560 +399,562 @@ new #[Layout('layouts.app')] class extends Component {
             copied = true;
             setTimeout(() => copied = false, 2000);
           "
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition"
+          class="px-space-md py-1.5 bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-md text-label-md transition-colors border border-surface-variant flex items-center gap-1.5 cursor-pointer"
         >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
-          <span x-text="copied ? 'Link de Convite Copiado! 🎉' : 'Convidar Amigo(a)'"></span>
+          <span class="material-symbols-outlined text-sm text-primary">share</span>
+          <span x-text="copied ? 'Link Copiado! 🎉' : 'Convidar Amigos'"></span>
         </button>
       </div>
     </div>
 
-    <!-- Header Banner -->
-    <div class="bg-gradient-to-r from-rose-500 via-amber-500 to-orange-500 rounded-3xl p-6 sm:p-8 text-white shadow-xl mb-8 relative overflow-hidden">
-      <div class="absolute -right-10 -bottom-10 opacity-15 text-9xl select-none">🎲</div>
-
-      <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <span class="inline-block px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-xs font-bold uppercase tracking-wider mb-2">
-            {{ $list->places()->count() }} {{ Str::plural('restaurante', $list->places()->count()) }} cadastrados
+    <!-- Top Headline Section -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-space-lg pb-space-xl">
+      <div class="flex flex-col gap-space-xs max-w-3xl">
+        <div class="flex items-center gap-space-xs">
+          <span class="font-label-sm text-label-sm uppercase tracking-widest text-primary-container px-2 py-0.5 bg-surface-container-high">
+            [SORTEIO DA RODADA DE HOJE]
           </span>
-          <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-2">
-            {{ $list->name }}
-          </h1>
-          @if ($list->description)
-            <p class="text-white/90 text-sm sm:text-base max-w-2xl">
-              {{ $list->description }}
-            </p>
-          @endif
-
-          <div class="mt-4 flex items-center gap-3 text-xs text-white/80">
-            <span>Dono: <strong>{{ $list->owner->name }}</strong></span>
-            @if ($list->members->isNotEmpty())
-              <span>•</span>
-              <span>Membros: {{ $list->members->pluck('name')->join(', ') }}</span>
-            @endif
-          </div>
+          <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
+            / {{ $list->name }}
+          </span>
         </div>
+        <h1 class="font-display-lg text-display-lg-mobile md:text-display-lg tracking-tight text-on-surface font-bold">
+          Onde vamos comer hoje?
+        </h1>
+        <p class="font-body-lg text-body-lg text-on-surface-variant">
+          {{ $list->description ?: 'A gente nunca consegue decidir onde jantar. Então rodamos essa roletinha com os lugares salvos da lista.' }}
+        </p>
+      </div>
 
-        <!-- BIG ACTION: SPIN THE WHEEL -->
-        <div class="shrink-0 flex flex-col sm:flex-row items-center gap-3">
-          <button
-            type="button"
-            @click="showRouletteModal = true; $nextTick(() => drawWheel())"
-            class="w-full sm:w-auto px-7 py-4 rounded-2xl font-black text-lg bg-white text-rose-600 hover:bg-rose-50 shadow-2xl shadow-black/20 hover:scale-105 active:scale-95 transition cursor-pointer flex items-center justify-center gap-3"
-          >
-            <span class="text-2xl animate-bounce">🎡</span>
-            <span>Girar a Roleta!</span>
-          </button>
-
-          <button
-            type="button"
-            wire:click="openCreatePlaceModal"
-            class="w-full sm:w-auto px-5 py-3.5 rounded-2xl font-semibold text-sm bg-black/20 hover:bg-black/30 backdrop-blur-sm border border-white/30 text-white transition flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <span>+</span> Adicionar Lugar
-          </button>
+      <div class="flex items-center gap-space-sm bg-surface-container-low p-space-sm border border-surface-variant/40 shrink-0">
+        <div class="flex flex-col">
+          <span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Modo de Decisão</span>
+          <span class="font-headline-sm text-headline-sm text-primary font-bold">Aleatório Absoluto</span>
         </div>
+        <span class="material-symbols-outlined text-primary text-3xl">casino</span>
       </div>
     </div>
 
-    <!-- Status Messages -->
+    <!-- Feedback Message -->
     @if (session('status'))
-      <div class="mb-6 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-sm font-medium flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <span>✨</span>
+      <div class="mb-space-lg p-space-md bg-surface-container-low border border-primary/40 text-on-surface flex items-center justify-between">
+        <div class="flex items-center gap-space-xs text-primary font-body-md text-body-md">
+          <span class="material-symbols-outlined text-lg">check_circle</span>
           <span>{{ session('status') }}</span>
         </div>
-        <button type="button" @click="$el.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700">&times;</button>
+        <button type="button" @click="$el.parentElement.remove()" class="text-outline hover:text-on-surface">&times;</button>
       </div>
     @endif
 
-    <!-- Search & Filters Toolbar -->
-    <div class="mb-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-      <div class="relative flex-1">
-        <input
-          type="text"
-          wire:model.live.debounce.250ms="search"
-          placeholder="Buscar por nome, bairro, recomendação..."
-          class="w-full text-sm pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-rose-500 focus:outline-none"
-        />
-        <svg class="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-3">
-        <!-- Status Filter -->
-        <select
-          wire:model.live="filterVisited"
-          class="text-xs font-semibold px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-rose-500 focus:outline-none"
-        >
-          <option value="all">Status: Todos</option>
-          <option value="not_visited">Apenas Não Visitados</option>
-          <option value="visited">Já Visitados</option>
-        </select>
-
-        <!-- Price Filter -->
-        <select
-          wire:model.live="filterPrice"
-          class="text-xs font-semibold px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-rose-500 focus:outline-none"
-        >
-          <option value="all">Preço: Todos</option>
-          @foreach ($priceRanges as $range)
-            <option value="{{ $range->value }}">{{ $range->label() }}</option>
-          @endforeach
-        </select>
-      </div>
-    </div>
-
-    <!-- Places Grid -->
-    @if ($places->isEmpty())
-      <div class="text-center py-16 px-4 rounded-3xl bg-white dark:bg-gray-800 border-2 border-dashed border-gray-200 dark:border-gray-700">
-        <div class="text-5xl mb-3">🍕</div>
-        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Nenhum lugar encontrado</h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-md mx-auto">
-          Adicione seu primeiro restaurante, pastelaria, pizzaria ou burger para poder sortear!
-        </p>
-        <button
-          wire:click="openCreatePlaceModal"
-          class="mt-5 px-5 py-2.5 rounded-xl font-semibold text-sm text-white bg-rose-600 hover:bg-rose-700 shadow-md transition cursor-pointer"
-        >
-          + Adicionar Lugar Agora
-        </button>
-      </div>
-    @else
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        @foreach ($places as $place)
-          <div
-            wire:key="place-card-{{ $place->id }}"
-            class="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between relative {{ $place->visited ? 'opacity-75' : '' }}"
-          >
-            <div>
-              <div class="flex items-start justify-between gap-3 mb-2">
-                <div class="flex-1">
-                  <h3 class="text-base font-bold text-gray-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition flex items-center gap-2">
-                    <span>{{ $place->name }}</span>
-                    @if ($place->visited)
-                      <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
-                        Já fui!
-                      </span>
-                    @endif
-                  </h3>
-
-                  @if ($place->address)
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
-                      <span>📍</span>
-                      <span>{{ $place->address }}</span>
-                    </p>
-                  @endif
-                </div>
-
-                <!-- Price Badge -->
-                @if ($place->price_range)
-                  <span class="shrink-0 px-2 py-1 rounded-lg text-xs font-black bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                    {{ $place->price_range->value }}
-                  </span>
-                @endif
-              </div>
-
-              <!-- Description / Notes -->
-              @if ($place->description)
-                <div class="my-3 p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 text-xs text-amber-900 dark:text-amber-200">
-                  <p class="font-semibold text-[11px] uppercase tracking-wider text-amber-800 dark:text-amber-400 mb-0.5">Dica / Recomendação:</p>
-                  <p class="italic">"{{ $place->description }}"</p>
-                </div>
-              @endif
-
-              <!-- External Links -->
-              <div class="flex flex-wrap items-center gap-2 text-xs my-2">
-                @if ($place->google_maps_url)
-                  <a
-                    href="{{ $place->google_maps_url }}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    <span>🗺️ Ver no Maps</span>
-                  </a>
-                @endif
-
-                @if ($place->external_link)
-                  <a
-                    href="{{ $place->external_link }}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 hover:underline"
-                  >
-                    <span>🔗 Link/Instagram</span>
-                  </a>
-                @endif
-              </div>
-            </div>
-
-            <!-- Card Bottom Bar: Quick Toggle Visited, Google Calendar & Edit/Delete -->
-            <div class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between text-xs">
+    <!-- Main Grid: 7 cols (Roulette) + 5 cols (Places List) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
+      <!-- Left Column: The Interactive Roulette -->
+      <div class="lg:col-span-7 flex flex-col gap-space-md">
+        <div class="bg-surface-container-lowest p-space-lg relative flex flex-col items-center border border-surface-variant/40 shadow-xl">
+          <!-- Status Bar -->
+          <div class="w-full flex flex-wrap items-center justify-between gap-space-sm pb-space-lg">
+            <span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant flex items-center gap-1.5">
+              <span class="w-2 h-2 bg-secondary-container inline-block animate-pulse"></span>
+              RODA ATIVA: <strong class="text-on-surface ml-1" x-text="`${candidates.length} OPÇÕES`"></strong>
+            </span>
+            <div class="flex items-center gap-space-xs">
               <button
                 type="button"
-                wire:click="toggleVisited({{ $place->id }})"
-                class="inline-flex items-center gap-1.5 font-medium transition cursor-pointer {{ $place->visited ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500 hover:text-emerald-600' }}"
+                wire:click="$set('roulettePriceFilter', 'all'); $set('rouletteStatusFilter', 'not_visited');"
+                class="px-space-sm py-1 bg-surface-container text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm uppercase transition-colors cursor-pointer"
               >
-                <span>{{ $place->visited ? '✅ Já Fui' : '⭕ Marcar como Já Fui' }}</span>
+                Resetar Filtros
               </button>
-
-              <div class="flex items-center gap-2">
-                <!-- Free Google Calendar Web Intent Link -->
-                <a
-                  href="{{ $place->googleCalendarUrl() }}"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="p-1 text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition"
-                  title="Criar evento no Google Agenda (Grátis)"
-                >
-                  📅
-                </a>
-
-                <!-- Edit Button -->
-                <button
-                  type="button"
-                  wire:click="openEditPlaceModal({{ $place->id }})"
-                  class="p-1 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
-                  title="Editar"
-                >
-                  ✏️
-                </button>
-
-                <!-- Delete Button -->
-                <button
-                  type="button"
-                  wire:click="deletePlace({{ $place->id }})"
-                  wire:confirm="Tem certeza que deseja remover este lugar?"
-                  class="p-1 text-gray-400 hover:text-rose-600 transition"
-                  title="Excluir"
-                >
-                  🗑️
-                </button>
-              </div>
             </div>
           </div>
-        @endforeach
-      </div>
-    @endif
-  </div>
 
-  <!-- ROULETTE MODAL -->
-  <div
-    x-show="showRouletteModal"
-    x-cloak
-    class="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-md flex items-center justify-center p-4"
-  >
-    <div
-      class="bg-white dark:bg-gray-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-gray-200 dark:border-gray-700 relative text-center"
-      @click.away="if (!isSpinning) showRouletteModal = false"
-    >
-      <button
-        type="button"
-        @click="showRouletteModal = false"
-        x-show="!isSpinning"
-        class="absolute right-5 top-5 text-gray-400 hover:text-gray-600 dark:hover:text-white text-2xl font-bold"
-      >
-        &times;
-      </button>
+          <!-- The Roulette Disk -->
+          <div class="relative w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 my-space-md flex items-center justify-center">
+            <!-- Downward Pointer Arrow -->
+            <div class="absolute -top-3 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center pointer-events-none">
+              <div class="w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[20px] border-t-secondary-container drop-shadow-md"></div>
+            </div>
 
-      <h2 class="text-2xl font-black text-gray-900 dark:text-white flex items-center justify-center gap-2 mb-2">
-        <span>🎡</span> Roleta Gastronômica
-      </h2>
-      <p class="text-xs text-gray-500 dark:text-gray-400 mb-6">
-        Deixe a sorte decidir onde vocês vão comer hoje!
-      </p>
-
-      <!-- Roulette Filters -->
-      <div class="mb-6 flex flex-wrap items-center justify-center gap-3" x-show="!isSpinning">
-        <select
-          wire:model.live="rouletteStatusFilter"
-          class="text-xs px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none"
-        >
-          <option value="not_visited">Apenas Não Visitados</option>
-          <option value="all">Qualquer Status</option>
-        </select>
-
-        <select
-          wire:model.live="roulettePriceFilter"
-          class="text-xs px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none"
-        >
-          <option value="all">Qualquer Faixa de Preço</option>
-          @foreach ($priceRanges as $range)
-            <option value="{{ $range->value }}">{{ $range->label() }}</option>
-          @endforeach
-        </select>
-      </div>
-
-      <!-- Wheel Container & Top Pointer -->
-      <div class="relative inline-block mx-auto mb-6">
-        <!-- Top Pointer Triangle -->
-        <div class="absolute -top-3 left-1/2 -translate-x-1/2 z-20 w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[24px] border-t-rose-600 drop-shadow-md"></div>
-
-        <canvas
-          id="roulette-canvas"
-          width="360"
-          height="360"
-          class="rounded-full shadow-2xl mx-auto border-4 border-gray-900 dark:border-white/10"
-        ></canvas>
-      </div>
-
-      <!-- Spin Button -->
-      <div>
-        <button
-          type="button"
-          @click="spinWheel()"
-          :disabled="isSpinning || candidates.length === 0"
-          class="px-8 py-3.5 rounded-2xl font-black text-lg text-white bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 shadow-xl shadow-rose-500/30 transition transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-        >
-          <span x-show="!isSpinning">Girar Roleta! 🎲</span>
-          <span x-show="isSpinning" class="animate-pulse">Girando... 🌀</span>
-        </button>
-      </div>
-
-      <template x-if="candidates.length === 0">
-        <p class="mt-3 text-xs text-rose-500 font-semibold">
-          Nenhum restaurante disponível com os filtros selecionados!
-        </p>
-      </template>
-    </div>
-  </div>
-
-  <!-- WINNER MODAL -->
-  @if ($pickedPlace)
-    <div
-      x-show="showWinnerModal"
-      x-cloak
-      class="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
-    >
-      <div
-        class="bg-white dark:bg-gray-800 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border-2 border-rose-500 text-center relative transform transition-all"
-        @click.away="showWinnerModal = false"
-      >
-        <div class="text-6xl mb-3">🎉🍽️</div>
-
-        <span class="inline-block px-3 py-1 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-bold text-xs uppercase tracking-wider mb-2">
-          O vencedor é!
-        </span>
-
-        <h3 class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-2">
-          {{ $pickedPlace->name }}
-        </h3>
-
-        @if ($pickedPlace->price_range)
-          <p class="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-2">
-            Faixa de Preço: {{ $pickedPlace->price_range->label() }}
-          </p>
-        @endif
-
-        @if ($pickedPlace->address)
-          <p class="text-xs text-gray-500 dark:text-gray-400 mb-3 flex items-center justify-center gap-1">
-            <span>📍</span> {{ $pickedPlace->address }}
-          </p>
-        @endif
-
-        @if ($pickedPlace->description)
-          <div class="my-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 text-left">
-            <p class="font-bold text-[10px] uppercase tracking-wider text-amber-800 dark:text-amber-400">Recomendação:</p>
-            <p class="italic">"{{ $pickedPlace->description }}"</p>
-          </div>
-        @endif
-
-        <!-- Call to Actions -->
-        <div class="mt-6 flex flex-col gap-2.5">
-          <!-- 100% Free Google Calendar Web Intent -->
-          <a
-            href="{{ $pickedPlace->googleCalendarUrl() }}"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="w-full py-3 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 transition flex items-center justify-center gap-2"
-          >
-            <span>📅</span> Adicionar ao Google Agenda (Grátis)
-          </a>
-
-          @if ($pickedPlace->google_maps_url)
-            <a
-              href="{{ $pickedPlace->google_maps_url }}"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="w-full py-2.5 rounded-xl font-semibold text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition flex items-center justify-center gap-2"
+            <!-- Rotating Disk Container -->
+            <div
+              class="w-full h-full relative"
+              id="roulette-container"
+              wire:ignore
+              :style="{
+                transform: `rotate(${currentRotation}deg)`,
+                transition: isSpinning ? 'transform 4s cubic-bezier(0.17, 0.89, 0.25, 1.02)' : 'none',
+                transformOrigin: '50% 50%'
+              }"
             >
-              <span>🗺️</span> Abrir Rota no Google Maps
-            </a>
-          @endif
+              <svg class="w-full h-full drop-shadow-2xl" viewBox="0 0 400 400">
+                <g id="wheelSvgGroup" transform="translate(200, 200)"></g>
+              </svg>
+            </div>
+
+            <!-- Central Hub Button -->
+            <button
+              type="button"
+              id="spin-hub-btn"
+              @click="spinWheel()"
+              :disabled="isSpinning || candidates.length === 0"
+              class="absolute z-20 w-20 h-20 bg-surface-container-high hover:bg-surface-variant flex flex-col items-center justify-center transition-colors group cursor-pointer shadow-xl border border-surface-variant/60 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span class="font-headline-sm text-headline-sm font-bold text-primary group-hover:scale-105 transition-transform uppercase tracking-wider">
+                Girar
+              </span>
+              <span class="font-label-sm text-label-sm text-outline tracking-tight">RODADA</span>
+            </button>
+          </div>
+
+          <!-- Quick Filter Chips -->
+          <div class="w-full flex items-center justify-center flex-wrap gap-space-xs pt-space-md border-t border-surface-variant/30">
+            <span class="font-label-sm text-label-sm uppercase tracking-wider text-outline mr-1">Filtros:</span>
+
+            <button
+              type="button"
+              wire:click="$set('roulettePriceFilter', 'all')"
+              class="px-space-sm py-1 font-label-md text-label-md font-semibold transition-colors cursor-pointer {{ $roulettePriceFilter === 'all' ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant hover:text-on-surface' }}"
+            >
+              Todos os preços
+            </button>
+
+            @foreach ($priceRanges as $range)
+              <button
+                type="button"
+                wire:click="$set('roulettePriceFilter', '{{ $range->value }}')"
+                class="px-space-sm py-1 font-label-md text-label-md font-semibold transition-colors cursor-pointer {{ $roulettePriceFilter === $range->value ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant hover:text-on-surface' }}"
+              >
+                {{ $range->value }}
+              </button>
+            @endforeach
+
+            <button
+              type="button"
+              wire:click="$set('rouletteStatusFilter', '{{ $rouletteStatusFilter === 'not_visited' ? 'all' : 'not_visited' }}')"
+              class="px-space-sm py-1 font-label-md text-label-md font-semibold transition-colors cursor-pointer {{ $rouletteStatusFilter === 'not_visited' ? 'bg-secondary-container text-on-secondary-container' : 'bg-surface-container text-on-surface-variant hover:text-on-surface' }}"
+            >
+              {{ $rouletteStatusFilter === 'not_visited' ? '✓ Apenas não visitados' : 'Qualquer status' }}
+            </button>
+          </div>
+
+          <template x-if="candidates.length === 0">
+            <p class="mt-3 text-xs text-error font-medium">
+              Nenhum restaurante encontrado com os filtros selecionados! Adicione novos locais ou ajuste os filtros.
+            </p>
+          </template>
+        </div>
+
+        <!-- Result Display Box Below Roulette -->
+        <div class="bg-surface-container-low p-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md border border-surface-variant/40 shadow-lg">
+          <div class="flex flex-col gap-1 w-full md:w-auto">
+            <span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Status do Giro</span>
+            <div class="font-headline-md text-headline-md font-bold text-on-surface tracking-tight" id="result-text">
+              <span x-show="!isSpinning && !chosenWinner">Dê um giro para descobrir!</span>
+              <span x-show="isSpinning" class="animate-pulse text-primary">Girando a sorte...</span>
+              <span x-show="!isSpinning && chosenWinner" x-text="chosenWinner ? chosenWinner.name : ''" class="text-primary-container"></span>
+            </div>
+            <p class="font-body-sm text-body-sm text-on-surface-variant" id="result-subtext">
+              <span x-show="!isSpinning && !chosenWinner">Clique no botão central ou abaixo para definir o rango.</span>
+              <span x-show="isSpinning">Segurem a fome, a decisão está saindo!</span>
+              <span x-show="!isSpinning && chosenWinner" x-text="chosenWinner && chosenWinner.address ? `📍 ${chosenWinner.address}` : 'Partiu comer!'"></span>
+            </p>
+
+            <!-- Winner Actions: Calendar & Visited -->
+            <div x-show="!isSpinning && chosenWinner" class="flex flex-wrap items-center gap-space-xs mt-2" style="display: none;">
+              @if ($pickedPlace)
+                <a
+                  href="{{ $pickedPlace->googleCalendarUrl() }}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="px-space-md py-1.5 bg-surface-container-high hover:bg-surface-bright text-on-surface text-xs font-semibold flex items-center gap-1.5 transition-colors border border-surface-variant"
+                >
+                  <span class="material-symbols-outlined text-sm text-primary">calendar_today</span>
+                  Google Agenda (1 clique)
+                </a>
+
+                @if ($pickedPlace->google_maps_url)
+                  <a
+                    href="{{ $pickedPlace->google_maps_url }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="px-space-md py-1.5 bg-surface-container-high hover:bg-surface-bright text-on-surface text-xs font-semibold flex items-center gap-1.5 transition-colors border border-surface-variant"
+                  >
+                    <span class="material-symbols-outlined text-sm text-secondary">map</span>
+                    Ver no Maps
+                  </a>
+                @endif
+
+                <button
+                  type="button"
+                  wire:click="toggleVisited({{ $pickedPlace->id }})"
+                  class="px-space-md py-1.5 bg-surface-container-high hover:bg-surface-bright text-xs font-semibold transition-colors border border-surface-variant {{ $pickedPlace->visited ? 'text-primary' : 'text-on-surface-variant' }}"
+                >
+                  {{ $pickedPlace->visited ? '✓ Já Marcado como Fui' : 'Marcar como Fui' }}
+                </button>
+              @endif
+            </div>
+          </div>
 
           <button
             type="button"
-            wire:click="toggleVisited({{ $pickedPlace->id }})"
-            class="w-full py-2.5 rounded-xl font-semibold text-sm text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition cursor-pointer"
+            id="spin-main-btn"
+            @click="spinWheel()"
+            :disabled="isSpinning || candidates.length === 0"
+            class="w-full md:w-auto px-space-lg py-space-md bg-secondary-container hover:opacity-90 text-on-secondary-container font-headline-sm text-headline-sm uppercase tracking-wider font-bold transition-all flex items-center justify-center gap-space-xs shadow-lg cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {{ $pickedPlace->visited ? '✅ Marcado como Já Fui' : '🍽️ Marcar como Visitado!' }}
+            <span class="material-symbols-outlined">restart_alt</span>
+            <span>Girar a Roleta Agora</span>
           </button>
+        </div>
 
-          <button
-            type="button"
-            @click="showWinnerModal = false; spinWheel()"
-            class="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 font-medium py-2 transition"
-          >
-            Não curtiu? Rodar de novo! 🔄
-          </button>
+        <!-- Recent Sighting Context -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
+          <div class="bg-surface-container-lowest p-space-md flex items-center gap-space-sm border border-surface-variant/40">
+            <div class="w-14 h-14 bg-surface-container-low flex items-center justify-center text-primary shrink-0">
+              <span class="material-symbols-outlined text-2xl">casino</span>
+            </div>
+            <div class="flex flex-col min-w-0">
+              <span class="font-label-sm text-label-sm text-primary uppercase">Mais Sorteado</span>
+              <span class="font-headline-sm text-headline-sm text-on-surface truncate">
+                {{ $places->first()?->name ?? 'Em breve' }}
+              </span>
+              <span class="font-body-sm text-body-sm text-on-surface-variant">Favorito das noites</span>
+            </div>
+          </div>
+
+          <div class="bg-surface-container-lowest p-space-md flex items-center gap-space-sm border border-surface-variant/40">
+            <div class="w-14 h-14 bg-surface-container-low flex items-center justify-center text-secondary shrink-0">
+              <span class="material-symbols-outlined text-2xl">verified</span>
+            </div>
+            <div class="flex flex-col min-w-0">
+              <span class="font-label-sm text-label-sm text-secondary uppercase">Última Vitória</span>
+              <span class="font-headline-sm text-headline-sm text-on-surface truncate">
+                {{ $lastVisitedPlace?->name ?? 'Nenhum ainda' }}
+              </span>
+              <span class="font-body-sm text-body-sm text-on-surface-variant">
+                {{ $lastVisitedPlace ? 'Marcado como visitado' : 'Pronto pro sorteio' }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Lugares na Rodada (List & Configuration) -->
+      <div class="lg:col-span-5 flex flex-col gap-space-md">
+        <div class="bg-surface-container-lowest p-space-lg flex flex-col gap-space-md border border-surface-variant/40 shadow-xl">
+          <div class="flex items-start justify-between gap-space-sm pb-space-sm border-b border-surface-variant/30">
+            <div class="flex flex-col">
+              <span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Configuração</span>
+              <h2 class="font-headline-md text-headline-md text-on-surface font-bold">Lugares na rodada</h2>
+              <span class="font-body-sm text-body-sm text-on-surface-variant">Marca ou desmarca pra rodar</span>
+            </div>
+            <button
+              type="button"
+              wire:click="openCreatePlaceModal"
+              class="px-space-sm py-1.5 bg-surface-container hover:bg-surface-container-high text-primary font-label-md text-label-md uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-base">add</span>
+              <span>+ Adicionar local</span>
+            </button>
+          </div>
+
+          <!-- Places Search inside List -->
+          <div class="relative">
+            <input
+              type="text"
+              wire:model.live.debounce.250ms="search"
+              placeholder="Filtrar por nome, endereço..."
+              class="w-full bg-surface-container border border-surface-variant text-on-surface placeholder:text-outline px-space-md py-1.5 text-xs focus:border-primary focus:outline-none"
+            />
+            @if ($search)
+              <button
+                type="button"
+                wire:click="$set('search', '')"
+                class="absolute right-2 top-2 text-outline hover:text-on-surface text-xs"
+              >
+                &times;
+              </button>
+            @endif
+          </div>
+
+          <!-- Items Checklist -->
+          <div class="flex flex-col gap-1.5 max-h-[460px] overflow-y-auto pr-1" id="places-list">
+            @forelse ($places as $place)
+              <div
+                wire:key="place-item-{{ $place->id }}"
+                class="flex items-center justify-between p-space-sm bg-surface-container hover:bg-surface-container-high transition-colors {{ $place->visited ? 'opacity-65' : '' }}"
+              >
+                <label class="flex items-center gap-space-sm cursor-pointer select-none min-w-0 flex-1">
+                  <input
+                    type="checkbox"
+                    wire:click="toggleVisited({{ $place->id }})"
+                    @checked($place->visited)
+                    class="w-4 h-4 rounded-none accent-primary-container bg-surface-container-highest cursor-pointer border-surface-variant"
+                  >
+                  <div class="flex flex-col min-w-0">
+                    <span class="font-body-md text-body-md text-on-surface font-medium truncate {{ $place->visited ? 'line-through text-outline' : '' }}">
+                      {{ $place->name }}
+                    </span>
+                    @if ($place->address)
+                      <span class="font-body-sm text-body-sm text-outline truncate text-[11px]">
+                        {{ $place->address }}
+                      </span>
+                    @endif
+                  </div>
+                </label>
+
+                <div class="flex items-center gap-space-xs shrink-0 ml-2">
+                  @if ($place->price_range)
+                    <span class="px-2 py-0.5 bg-surface-container-lowest text-primary font-label-sm text-label-sm font-bold">
+                      {{ $place->price_range->value }}
+                    </span>
+                  @endif
+
+                  <!-- Google Maps Button -->
+                  @if ($place->google_maps_url)
+                    <a
+                      href="{{ $place->google_maps_url }}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-outline hover:text-primary transition-colors flex items-center p-1"
+                      title="Abrir no Google Maps"
+                    >
+                      <span class="material-symbols-outlined text-base">map</span>
+                    </a>
+                  @endif
+
+                  <!-- Google Calendar Intent Button -->
+                  <a
+                    href="{{ $place->googleCalendarUrl() }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-outline hover:text-primary transition-colors flex items-center p-1"
+                    title="Adicionar ao Google Agenda"
+                  >
+                    <span class="material-symbols-outlined text-base">calendar_add_on</span>
+                  </a>
+
+                  <!-- Edit Button -->
+                  <button
+                    type="button"
+                    wire:click="openEditPlaceModal({{ $place->id }})"
+                    class="text-outline hover:text-on-surface transition-colors flex items-center p-1 cursor-pointer"
+                    title="Editar"
+                  >
+                    <span class="material-symbols-outlined text-base">edit</span>
+                  </button>
+
+                  <!-- Delete Button -->
+                  <button
+                    type="button"
+                    wire:click="deletePlace({{ $place->id }})"
+                    wire:confirm="Tem certeza que deseja excluir '{{ $place->name }}'?"
+                    class="text-outline hover:text-error transition-colors flex items-center p-1 cursor-pointer"
+                    title="Remover"
+                  >
+                    <span class="material-symbols-outlined text-base">delete</span>
+                  </button>
+                </div>
+              </div>
+            @empty
+              <div class="p-space-lg text-center text-outline font-body-sm text-body-sm">
+                Nenhum restaurante cadastrado nesta lista ainda. Clique acima para adicionar!
+              </div>
+            @endforelse
+          </div>
+
+          <!-- Share Action -->
+          <div class="pt-space-xs border-t border-surface-variant/30">
+            <button
+              type="button"
+              @click="copyShareText()"
+              class="w-full py-space-sm px-space-md bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-lg text-label-lg font-semibold flex items-center justify-center gap-space-xs transition-colors cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-primary text-xl" x-text="copiedShare ? 'check' : 'share'"></span>
+              <span x-text="copiedShare ? 'Texto copiado!' : 'Compartilhar'"></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Friendly Tip Card -->
+        <div class="bg-surface-container-low p-space-md flex items-start gap-space-sm border border-surface-variant/40">
+          <span class="material-symbols-outlined text-primary-container text-2xl shrink-0">tips_and_updates</span>
+          <div class="flex flex-col gap-0.5">
+            <span class="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold">Dica dos Criadores</span>
+            <p class="font-body-sm text-body-sm text-on-surface">
+              Sem estresse: se o grupo torcer o nariz pro lugar sorteado, gira de novo sem crise! O importante é forrar o estômago.
+            </p>
+          </div>
+        </div>
+
+        <!-- Última Vitória Card -->
+        <div class="bg-surface-container-lowest p-space-md flex flex-col gap-space-xs border border-surface-variant/40">
+          <div class="flex items-center justify-between">
+            <span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Última vitória</span>
+            <span class="font-label-sm text-label-sm text-secondary uppercase font-semibold">Semana Passada</span>
+          </div>
+          <div class="font-headline-sm text-headline-sm text-on-surface font-bold">
+            {{ $lastVisitedPlace?->name ?? 'Pronto pro sorteio' }}
+          </div>
+          <p class="font-body-sm text-body-sm text-on-surface-variant">
+            {{ $lastVisitedPlace && $lastVisitedPlace->description ? $lastVisitedPlace->description : 'Rendeu porção caprichada e cerveja gelada na mesa.' }}
+          </p>
         </div>
       </div>
     </div>
-  @endif
+  </div>
 
-  <!-- CREATE / EDIT PLACE MODAL -->
+  <!-- Create / Edit Place Modal -->
   @if ($showPlaceModal)
-    <div class="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div
-        class="bg-white dark:bg-gray-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 dark:border-gray-700 transform transition-all"
+        class="bg-surface-container border border-surface-variant p-space-lg shadow-2xl max-w-lg w-full relative"
         @click.away="$wire.set('showPlaceModal', false)"
       >
-        <div class="flex items-center justify-between mb-5">
-          <h3 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <span>{{ $editingPlaceId ? '✏️ Editar Restaurante' : '🍽️ Novo Restaurante' }}</span>
-          </h3>
+        <div class="flex items-center justify-between pb-space-md border-b border-surface-variant/50 mb-space-md">
+          <div class="flex items-center gap-space-xs">
+            <span class="material-symbols-outlined text-primary text-xl">restaurant</span>
+            <h3 class="font-headline-md text-headline-md text-on-surface font-bold">
+              {{ $editingPlaceId ? 'Editar Restaurante' : 'Novo Restaurante' }}
+            </h3>
+          </div>
           <button
             type="button"
             wire:click="$set('showPlaceModal', false)"
-            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl leading-none"
+            class="text-outline hover:text-on-surface transition-colors"
           >
-            &times;
+            <span class="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
 
-        <form wire:submit="savePlace" class="space-y-4 text-left">
+        <form wire:submit="savePlace" class="flex flex-col gap-space-md">
           <!-- Nome -->
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-1">
+            <label class="block font-label-sm text-label-sm uppercase tracking-wider text-outline mb-1">
               Nome do Restaurante / Lugar *
             </label>
             <input
               type="text"
               wire:model="placeName"
-              placeholder="Ex: Bottino Ristorante, Pastel do Trevo..."
-              class="w-full text-sm px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-rose-500 focus:outline-none"
+              placeholder="Ex: Bottino Ristorante, Pastel da Feira, Bar do Zé..."
+              class="w-full bg-surface-container-high border border-surface-variant text-on-surface placeholder:text-outline px-space-md py-2.5 font-body-md focus:border-primary focus:outline-none"
               required
               autofocus
             />
             @error('placeName')
-              <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
+              <p class="mt-1 text-xs text-error font-medium">{{ $message }}</p>
             @enderror
           </div>
 
-          <!-- Google Maps URL -->
+          <!-- Endereço -->
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-1">
-              Link do Google Maps (opcional)
-            </label>
-            <input
-              type="text"
-              wire:model="placeGoogleMapsUrl"
-              placeholder="Ex: https://maps.app.goo.gl/..."
-              class="w-full text-sm px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-rose-500 focus:outline-none"
-            />
-            @error('placeGoogleMapsUrl')
-              <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
-            @enderror
-          </div>
-
-          <!-- Endereço Manual -->
-          <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-1">
+            <label class="block font-label-sm text-label-sm uppercase tracking-wider text-outline mb-1">
               Endereço / Bairro (opcional)
             </label>
             <input
               type="text"
               wire:model="placeAddress"
-              placeholder="Ex: Rio Vermelho, Pituba, Barra..."
-              class="w-full text-sm px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-rose-500 focus:outline-none"
+              placeholder="Ex: Rio Vermelho, Pinheiros, Rua Augusta..."
+              class="w-full bg-surface-container-high border border-surface-variant text-on-surface placeholder:text-outline px-space-md py-2.5 font-body-md focus:border-primary focus:outline-none"
             />
             @error('placeAddress')
-              <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
+              <p class="mt-1 text-xs text-error font-medium">{{ $message }}</p>
             @enderror
           </div>
 
           <!-- Faixa de Preço -->
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-1">
+            <label class="block font-label-sm text-label-sm uppercase tracking-wider text-outline mb-1">
               Faixa de Preço
             </label>
             <select
               wire:model="placePriceRange"
-              class="w-full text-sm px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-rose-500 focus:outline-none"
+              class="w-full bg-surface-container-high border border-surface-variant text-on-surface px-space-md py-2.5 font-body-md focus:border-primary focus:outline-none"
             >
               @foreach ($priceRanges as $range)
                 <option value="{{ $range->value }}">{{ $range->label() }}</option>
               @endforeach
             </select>
             @error('placePriceRange')
-              <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
+              <p class="mt-1 text-xs text-error font-medium">{{ $message }}</p>
             @enderror
           </div>
 
-          <!-- Dicas / Recomendações -->
+          <!-- Dicas / Notas -->
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-1">
-              Dicas / Recomendações / Notas
+            <label class="block font-label-sm text-label-sm uppercase tracking-wider text-outline mb-1">
+              Dicas / O que pedir (opcional)
             </label>
             <textarea
               wire:model="placeDescription"
               rows="3"
-              placeholder="Ex: Pedir o rodízio de pizza, pedir thali de carneiro, sobremesa de chocolate..."
-              class="w-full text-sm px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-rose-500 focus:outline-none"
+              placeholder="Ex: Pedir o pastel de camarão com catupiry e caldo de cana..."
+              class="w-full bg-surface-container-high border border-surface-variant text-on-surface placeholder:text-outline px-space-md py-2.5 font-body-md focus:border-primary focus:outline-none"
             ></textarea>
             @error('placeDescription')
-              <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
+              <p class="mt-1 text-xs text-error font-medium">{{ $message }}</p>
+            @enderror
+          </div>
+
+          <!-- Google Maps Link -->
+          <div>
+            <label class="block font-label-sm text-label-sm uppercase tracking-wider text-outline mb-1">
+              Link do Google Maps (opcional)
+            </label>
+            <input
+              type="text"
+              wire:model="placeGoogleMapsUrl"
+              placeholder="Ex: https://maps.app.goo.gl/..."
+              class="w-full bg-surface-container-high border border-surface-variant text-on-surface placeholder:text-outline px-space-md py-2.5 font-body-md focus:border-primary focus:outline-none"
+            />
+            @error('placeGoogleMapsUrl')
+              <p class="mt-1 text-xs text-error font-medium">{{ $message }}</p>
             @enderror
           </div>
 
           <!-- Link Externo / Instagram -->
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-1">
+            <label class="block font-label-sm text-label-sm uppercase tracking-wider text-outline mb-1">
               Link Externo / Instagram (opcional)
             </label>
             <input
               type="text"
               wire:model="placeExternalLink"
               placeholder="Ex: https://instagram.com/restaurante"
-              class="w-full text-sm px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-rose-500 focus:outline-none"
+              class="w-full bg-surface-container-high border border-surface-variant text-on-surface placeholder:text-outline px-space-md py-2.5 font-body-md focus:border-primary focus:outline-none"
             />
             @error('placeExternalLink')
-              <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
+              <p class="mt-1 text-xs text-error font-medium">{{ $message }}</p>
             @enderror
           </div>
 
           <!-- Checkbox Já Fui -->
-          <div class="flex items-center gap-2 pt-1">
+          <div class="flex items-center gap-space-xs pt-1">
             <input
               type="checkbox"
               id="placeVisitedCheckbox"
               wire:model="placeVisited"
-              class="rounded border-gray-300 text-rose-600 focus:ring-rose-500"
+              class="w-4 h-4 rounded-none accent-primary-container bg-surface-container-highest cursor-pointer border-surface-variant"
             />
-            <label for="placeVisitedCheckbox" class="text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+            <label for="placeVisitedCheckbox" class="font-body-sm text-body-sm text-on-surface cursor-pointer select-none">
               Já fui neste restaurante antes
             </label>
           </div>
 
           <!-- Actions -->
-          <div class="pt-4 flex items-center justify-end gap-3">
+          <div class="pt-space-sm flex items-center justify-end gap-space-sm border-t border-surface-variant/30">
             <button
               type="button"
               wire:click="$set('showPlaceModal', false)"
-              class="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              class="px-space-md py-2 bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-md text-label-md transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              class="px-5 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 shadow-md transition cursor-pointer"
+              class="px-space-lg py-2 bg-primary hover:bg-primary/90 text-on-primary font-label-md text-label-md font-semibold transition-colors shadow-md cursor-pointer"
             >
-              {{ $editingPlaceId ? 'Salvar Alterações' : 'Adicionar Lugar' }}
+              {{ $editingPlaceId ? 'Salvar Alterações' : 'Adicionar Local' }}
             </button>
           </div>
         </form>

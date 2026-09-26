@@ -7,14 +7,14 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 
-new #[Layout('layouts.app'), Title('Minhas Listas - Onde Vamos Comer')] class extends Component {
+new #[Layout('layouts.app'), Title('Nossas Listas de Comilança - Onde Vamos Comer')] class extends Component {
   public string $name = '';
   public string $description = '';
   public string $joinCode = '';
   public bool $showCreateModal = false;
 
   /**
-   * Get the lists owned by the authenticated user.
+   * Get the lists owned by the authenticated user and shared lists.
    */
   public function with(): array {
     $user = Auth::user();
@@ -37,9 +37,17 @@ new #[Layout('layouts.app'), Title('Minhas Listas - Onde Vamos Comer')] class ex
       ->latest()
       ->get();
 
+    $coverPhotos = [
+      'https://lh3.googleusercontent.com/aida-public/AB6AXuCbTf8IXaT2RW5DtrNQDxS9-H35oTp4DYX0jux_DZU4Ftn86-Bu0IdlCw-OePl3vgjjHY3HNB0se0DEPWZ6v6DBnp06U9Iti0TIEAwL2t21iHEdIaeTZwg7R0ByY7UNBNBmLo6JtTgr7hZ9i7OMx0RaXjx-TPoFplRigK8YMnakT_l5TdGGSCxjwLhPmuv1P0u8ZkG0do_ZJLbsD0mk2l3bYC6t-eQUO-2cg51eu2eoLaVOyM-gGce1XQ',
+      'https://lh3.googleusercontent.com/aida-public/AB6AXuAVVvUQtlzistbS_pIDgCcyHCHkPuNoOUZnCE5pl_96jjbmoMNb7A4wgWxBUlGn6Wp2GZuhOxtIuyjQk1ETx3Wvuou4TnTwdHex6KJUbVzdDasy7QAOhg9815o6YZ-d1fZHNHJx4wUyUahYdqNjK4TgDkItkchu2DxE9Abfer3zqGyfmByFjr8Ng-rQy_Xg_JunU6L8ULANtQOMvAllQ16fu_YDlwkPP4OqiZZ7G4zoN0hC7L2wGMUmfQ',
+      'https://lh3.googleusercontent.com/aida-public/AB6AXuCXu3KVIqEwKMZfd1gcX2ldbYHqPtsxHoDtmL4ozBcTRwvkMQrlPLMFRaJKlxHsRrCLmaJe1D1P5raLXV6WSEtDPHZiigdxv8mDjtDm-y4fgLY_rvX7RUMA5Y5ql0XFYby_9CW0tdFHtYxjpn-2fxr2dkHX7lyR_oQFm-rLnGM7XYxcLj164OP5V_FHIcfQ0zuzhgHHAGdPi0MUpfiLACplYvVk05X93k45GcuyGyjkuOVfk-3VNnOkcQ',
+      'https://lh3.googleusercontent.com/aida-public/AB6AXuDlqN7v0TilPiJkz6CCIB7OjPnsSZxAN5R7QVW31Eh_HBRN12L5TfCjUmaZHfFTKtzKCPFT_PZX-UJXaHcYhUIALlkt5XDBT8NhQ3kMP0UqGCstm9y0J4D5FKJSaOwJza6sSmn6jQrsKprJm7eK5L0mBW3DNyeE18buFuaVp9oa-BVoXudNR4DpJBEu9uXyO24e4cosPooMbbfRI7KiTX56s_96qwdiYRtYQhDH8_OrVbyns1OmkNhRgw',
+    ];
+
     return [
       'ownedLists' => $ownedLists,
       'sharedLists' => $sharedLists,
+      'coverPhotos' => $coverPhotos,
     ];
   }
 
@@ -100,307 +108,430 @@ new #[Layout('layouts.app'), Title('Minhas Listas - Onde Vamos Comer')] class ex
   }
 }; ?>
 
-<div class="py-8">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <!-- Top Header & Actions -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-      <div>
-        <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
-          <span>🍽️</span> Onde Vamos Comer?
-        </h1>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Crie listas, convide amigos ou o mozão e gire a roleta para decidir onde comer!
-        </p>
+<div class="flex flex-col w-full">
+  <!-- Sub-header ambient bar -->
+  <section class="w-full bg-surface-container-lowest py-space-xl border-b border-surface-variant/40">
+    <div class="max-w-7xl mx-auto px-margin-mobile lg:px-margin">
+      <!-- Tag / Breadcrumb -->
+      <div class="flex items-center gap-space-xs mb-space-sm">
+        <span class="inline-flex items-center gap-1.5 font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold px-2 py-0.5 bg-surface-container-low shadow-sm">
+          <span class="material-symbols-outlined text-[14px]">book_2</span>
+          [CADERNINHO DE RECOMENDAÇÕES]
+        </span>
+        <span class="text-on-surface-variant font-label-sm text-label-sm">•</span>
+        <span class="text-on-surface-variant font-label-sm text-label-sm tracking-wide">
+          {{ $ownedLists->count() + $sharedLists->count() }} {{ Str::plural('lista ativa', $ownedLists->count() + $sharedLists->count()) }}
+        </span>
       </div>
 
-      <div class="flex items-center gap-3">
-        <button
-          wire:click="$set('showCreateModal', true)"
-          class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 shadow-lg shadow-rose-500/25 transition-all duration-200 cursor-pointer active:scale-95"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          Nova Lista
-        </button>
-      </div>
-    </div>
-
-    <!-- Feedback Flash Message -->
-    @if (session('status'))
-      <div class="mb-6 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-sm font-medium flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <span>✨</span>
-          <span>{{ session('status') }}</span>
-        </div>
-        <button type="button" @click="$el.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700">&times;</button>
-      </div>
-    @endif
-
-    <!-- Quick Join by Invite Code -->
-    <div class="mb-10 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 p-5 shadow-sm">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-lg">
-            🎟️
-          </div>
-          <div>
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Recebeu um convite?</h3>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Cole o código do convite para entrar na lista de alguém.</p>
-          </div>
+      <!-- Main Headline & Intro -->
+      <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-space-md">
+        <div class="max-w-2xl">
+          <h1 class="font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface tracking-tight mb-space-xs font-bold">
+            Nossas listas de comilança
+          </h1>
+          <p class="font-body-lg text-body-lg text-on-surface-variant">
+            Os lugares que a gente anotou pra quando bater a fome e ninguém souber decidir. Sem firula, direto ao prato.
+          </p>
         </div>
 
-        <form wire:submit="joinWithCode" class="flex items-center gap-2 w-full sm:w-auto">
-          <input
-            type="text"
-            wire:model="joinCode"
-            placeholder="Ex: aB3xK9..."
-            class="w-full sm:w-48 text-sm px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-rose-500 dark:focus:ring-rose-600 focus:outline-none"
-          />
+        <!-- Action Bar: Create & Join Input -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-space-sm w-full lg:w-auto">
+          <!-- Quick Code Input Group -->
+          <form wire:submit="joinWithCode" class="flex items-center bg-surface-container-high shadow-md border border-surface-variant/60">
+            <span class="material-symbols-outlined text-outline pl-space-sm pr-space-xs text-[18px]">key</span>
+            <input
+              wire:model="joinCode"
+              class="bg-transparent font-body-md text-body-md text-on-surface placeholder:text-outline py-2 px-space-xs focus:outline-none w-full sm:w-56"
+              placeholder="Código de um amigo..."
+              type="text"
+            >
+            <button
+              type="submit"
+              class="bg-surface-variant hover:bg-surface-bright text-on-surface font-label-md text-label-md px-space-md py-2.5 transition-colors cursor-pointer"
+            >
+              Entrar
+            </button>
+          </form>
+
+          <!-- Create New List Button -->
           <button
-            type="submit"
-            class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition cursor-pointer shrink-0"
+            type="button"
+            wire:click="$set('showCreateModal', true)"
+            class="flex items-center justify-center gap-space-xs bg-primary-container hover:bg-primary-fixed-dim text-on-primary-container font-label-lg text-label-lg px-space-lg py-2.5 shadow-md transition-all active:scale-[0.99] font-semibold cursor-pointer"
           >
-            Entrar
+            <span class="material-symbols-outlined text-[18px]">add</span>
+            + Criar nova lista
           </button>
-        </form>
+        </div>
       </div>
       @error('joinCode')
-        <p class="mt-2 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
+        <p class="mt-2 text-xs text-error font-medium">{{ $message }}</p>
       @enderror
     </div>
+  </section>
 
-    <!-- Section: Minhas Listas -->
-    <div class="mb-12">
-      <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-        <span>⭐</span> Minhas Listas ({{ $ownedLists->count() }})
-      </h2>
+  <!-- Editorial Metadata Strip -->
+  <div class="w-full bg-surface-container-low border-b border-surface-variant/30">
+    <div class="max-w-7xl mx-auto px-margin-mobile lg:px-margin py-2.5 flex flex-wrap items-center justify-between gap-space-sm font-label-sm text-label-sm text-on-surface-variant">
+      <div class="flex items-center gap-space-md">
+        <span class="flex items-center gap-1.5 text-on-surface">
+          <span class="w-1.5 h-1.5 bg-primary"></span>
+          SINCRONIZADO VIA LINK LOCAL
+        </span>
+        <span class="hidden sm:inline text-outline-variant">/</span>
+        <span class="hidden sm:inline">ROULETE GASTRONÔMICA INDIE</span>
+      </div>
+      <div class="flex items-center gap-space-sm">
+        <span class="text-outline">ORDENAR:</span>
+        <span class="text-primary font-semibold">Mais recentes</span>
+        <span class="text-outline-variant">•</span>
+        <span class="text-on-surface-variant">Mais visitadas</span>
+      </div>
+    </div>
+  </div>
 
-      @if ($ownedLists->isEmpty())
-        <div class="text-center py-12 px-4 rounded-2xl bg-white dark:bg-gray-800 border-2 border-dashed border-gray-200 dark:border-gray-700">
-          <div class="text-4xl mb-3">📍</div>
-          <h3 class="text-base font-semibold text-gray-900 dark:text-white">Nenhuma lista criada ainda</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-sm mx-auto">
-            Crie sua primeira lista para organizar seus restaurantes favoritos e girar a roleta!
-          </p>
-          <button
-            wire:click="$set('showCreateModal', true)"
-            class="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
-          >
-            + Criar lista agora
-          </button>
+  <!-- Status / Flash Message -->
+  @if (session('status'))
+    <div class="max-w-7xl mx-auto px-margin-mobile lg:px-margin pt-space-md w-full">
+      <div class="p-space-md bg-surface-container-low border border-primary/40 text-on-surface flex items-center justify-between">
+        <div class="flex items-center gap-space-xs text-primary font-body-md text-body-md">
+          <span class="material-symbols-outlined text-lg">check_circle</span>
+          <span>{{ session('status') }}</span>
         </div>
-      @else
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          @foreach ($ownedLists as $list)
-            <div
-              wire:key="owned-list-{{ $list->id }}"
-              class="group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/90 dark:border-gray-700/70 p-6 shadow-sm hover:shadow-md hover:border-rose-300 dark:hover:border-rose-900/60 transition-all flex flex-col justify-between"
-            >
+        <button type="button" @click="$el.parentElement.remove()" class="text-outline hover:text-on-surface">&times;</button>
+      </div>
+    </div>
+  @endif
+
+  <!-- Active Lists Grid -->
+  <section class="max-w-7xl mx-auto px-margin-mobile lg:px-margin py-space-xl w-full">
+    @if ($ownedLists->isEmpty() && $sharedLists->isEmpty())
+      <div class="bg-surface-container-lowest p-space-xl border border-surface-variant/60 text-center flex flex-col items-center justify-center">
+        <span class="material-symbols-outlined text-5xl text-outline mb-space-sm">restaurant_menu</span>
+        <h3 class="font-headline-md text-headline-md text-on-surface font-semibold mb-space-xs">Nenhuma lista criada ainda</h3>
+        <p class="font-body-md text-body-md text-on-surface-variant max-w-md mb-space-lg">
+          Crie sua primeira lista de restaurantes, convide os amigos ou use o código de uma lista já existente!
+        </p>
+        <button
+          type="button"
+          wire:click="$set('showCreateModal', true)"
+          class="flex items-center gap-space-xs bg-primary hover:bg-primary-fixed-dim text-on-primary font-label-lg text-label-lg px-space-lg py-2.5 shadow-md font-semibold cursor-pointer"
+        >
+          <span class="material-symbols-outlined text-lg">add</span>
+          Criar minha primeira lista
+        </button>
+      </div>
+    @else
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-space-lg">
+        <!-- Owned Lists -->
+        @foreach ($ownedLists as $list)
+          @php
+            $photo = $coverPhotos[$loop->index % count($coverPhotos)];
+          @endphp
+          <article
+            wire:key="owned-list-{{ $list->id }}"
+            class="bg-surface-container flex flex-col justify-between shadow-lg relative overflow-hidden group border border-surface-variant/40"
+          >
+            <div class="relative w-full h-44 overflow-hidden bg-surface-container-high">
+              <img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt="{{ $list->name }}" src="{{ $photo }}">
+              <div class="absolute inset-0 bg-gradient-to-t from-surface-container via-surface-container/40 to-transparent"></div>
+              <div class="absolute top-space-sm left-space-sm">
+                <span class="bg-surface-container-lowest/90 backdrop-blur-sm text-secondary font-label-sm text-label-sm uppercase tracking-wider px-2.5 py-1">
+                  #dono
+                </span>
+              </div>
+              <div class="absolute bottom-space-xs right-space-sm">
+                <span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container-lowest/80 px-2 py-0.5 uppercase">
+                  ATUALIZADA {{ $list->updated_at->diffForHumans() }}
+                </span>
+              </div>
+            </div>
+
+            <div class="p-space-lg flex-1 flex flex-col justify-between">
               <div>
-                <div class="flex items-start justify-between gap-3 mb-2">
-                  <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition">
-                    <a href="{{ route('lists.show', $list) }}" wire:navigate>
+                <div class="flex items-start justify-between gap-space-xs mb-space-xs">
+                  <h2 class="font-headline-md text-headline-md text-on-surface font-semibold tracking-tight">
+                    <a href="{{ route('lists.show', $list) }}" wire:navigate class="hover:text-primary transition-colors">
                       {{ $list->name }}
                     </a>
-                  </h3>
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
-                    Dono
-                  </span>
+                  </h2>
+
+                  <!-- Options Dropdown Menu -->
+                  <div class="relative" x-data="{ menuOpen: false }">
+                    <button
+                      @click="menuOpen = !menuOpen"
+                      @click.away="menuOpen = false"
+                      class="text-on-surface-variant hover:text-primary transition-colors p-1"
+                      title="Opções da lista"
+                    >
+                      <span class="material-symbols-outlined text-[20px]">more_vert</span>
+                    </button>
+
+                    <div
+                      x-show="menuOpen"
+                      x-transition
+                      class="absolute right-0 mt-1 w-44 bg-surface-container-high border border-surface-variant shadow-2xl py-1 z-30"
+                      style="display: none;"
+                    >
+                      <button
+                        type="button"
+                        @click="
+                          navigator.clipboard.writeText('{{ url('/lists/join/' . $list->invite_code) }}');
+                          menuOpen = false;
+                        "
+                        class="w-full text-left px-3 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-bright flex items-center gap-1.5"
+                      >
+                        <span class="material-symbols-outlined text-sm text-primary">share</span>
+                        Copiar Convite
+                      </button>
+
+                      <button
+                        type="button"
+                        wire:click="deleteList({{ $list->id }})"
+                        wire:confirm="Tem certeza que deseja excluir esta lista? Todos os restaurantes dela serão removidos."
+                        class="w-full text-left px-3 py-2 font-label-md text-label-md text-error hover:bg-surface-bright flex items-center gap-1.5"
+                      >
+                        <span class="material-symbols-outlined text-sm">delete</span>
+                        Excluir Lista
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 @if ($list->description)
-                  <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4">
+                  <p class="font-body-md text-body-md text-on-surface-variant mb-space-md line-clamp-2">
                     {{ $list->description }}
                   </p>
                 @endif
-
-                <div class="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 my-4">
-                  <span class="flex items-center gap-1 font-medium">
-                    <span class="text-rose-500">📍</span> {{ $list->places_count }} {{ Str::plural('lugar', $list->places_count) }}
-                  </span>
-                  <span>•</span>
-                  <span>
-                    ✅ {{ $list->visited_places_count }} visitados
-                  </span>
-                  @if ($list->members->isNotEmpty())
-                    <span>•</span>
-                    <span>👥 {{ $list->members->count() }} {{ Str::plural('membro', $list->members->count()) }}</span>
-                  @endif
-                </div>
               </div>
 
-              <div class="pt-4 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between gap-2">
-                <!-- Copy Invite Link via Alpine.js -->
-                <div x-data="{ copied: false }">
-                  <button
-                    type="button"
-                    @click="
-                      navigator.clipboard.writeText('{{ url('/lists/join/' . $list->invite_code) }}');
-                      copied = true;
-                      setTimeout(() => copied = false, 2000);
-                    "
-                    class="text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 inline-flex items-center gap-1 transition"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    <span x-text="copied ? 'Link Copiado! 🎉' : 'Copiar Convite'"></span>
-                  </button>
+              <div>
+                <!-- Stats -->
+                <div class="bg-surface-container-low px-space-md py-space-sm mb-space-md flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm">
+                  <div class="flex items-center gap-space-xs">
+                    <span class="material-symbols-outlined text-primary text-[16px]">restaurant</span>
+                    <span class="text-on-surface font-medium">{{ $list->places_count }} {{ Str::plural('lugar', $list->places_count) }}</span>
+                    <span>•</span>
+                    <span>{{ $list->visited_places_count }} visitados</span>
+                  </div>
+                  @if ($list->members->isNotEmpty())
+                    <span class="text-outline uppercase tracking-wider">
+                      {{ $list->members->count() }} {{ Str::plural('membro', $list->members->count()) }}
+                    </span>
+                  @else
+                    <span class="text-outline uppercase tracking-wider">Pessoal</span>
+                  @endif
                 </div>
 
-                <div class="flex items-center gap-2">
-                  <button
-                    wire:click="deleteList({{ $list->id }})"
-                    wire:confirm="Tem certeza que deseja excluir esta lista? Todos os restaurantes dela serão removidos."
-                    class="text-xs text-gray-400 hover:text-rose-600 transition p-1"
-                    title="Excluir Lista"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                <!-- Action buttons -->
+                <div class="grid grid-cols-2 gap-space-sm">
                   <a
                     href="{{ route('lists.show', $list) }}"
                     wire:navigate
-                    class="px-3.5 py-1.5 rounded-lg bg-gray-900 dark:bg-gray-700 hover:bg-rose-600 dark:hover:bg-rose-600 text-white text-xs font-semibold transition"
+                    class="bg-primary hover:bg-primary-fixed-dim text-on-primary font-label-md text-label-md py-2.5 px-space-sm flex items-center justify-center gap-1.5 transition-colors shadow-sm font-semibold text-center"
                   >
-                    Abrir ➔
+                    <span class="material-symbols-outlined text-[16px]">casino</span>
+                    Girar roleta
+                  </a>
+                  <a
+                    href="{{ route('lists.show', $list) }}"
+                    wire:navigate
+                    class="bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-md text-label-md py-2.5 px-space-sm flex items-center justify-center gap-1.5 transition-colors text-center"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">visibility</span>
+                    Ver lugares
                   </a>
                 </div>
               </div>
             </div>
-          @endforeach
-        </div>
-      @endif
-    </div>
+          </article>
+        @endforeach
 
-    <!-- Section: Listas Compartilhadas Comigo -->
-    @if ($sharedLists->isNotEmpty())
-      <div>
-        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <span>👥</span> Compartilhadas Comigo ({{ $sharedLists->count() }})
-        </h2>
+        <!-- Shared Lists -->
+        @foreach ($sharedLists as $list)
+          @php
+            $photo = $coverPhotos[($loop->index + 2) % count($coverPhotos)];
+          @endphp
+          <article
+            wire:key="shared-list-{{ $list->id }}"
+            class="bg-surface-container flex flex-col justify-between shadow-lg relative overflow-hidden group border border-surface-variant/40"
+          >
+            <div class="relative w-full h-44 overflow-hidden bg-surface-container-high">
+              <img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt="{{ $list->name }}" src="{{ $photo }}">
+              <div class="absolute inset-0 bg-gradient-to-t from-surface-container via-surface-container/40 to-transparent"></div>
+              <div class="absolute top-space-sm left-space-sm">
+                <span class="bg-surface-container-lowest/90 backdrop-blur-sm text-tertiary font-label-sm text-label-sm uppercase tracking-wider px-2.5 py-1">
+                  #compartilhada
+                </span>
+              </div>
+              <div class="absolute bottom-space-xs right-space-sm">
+                <span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container-lowest/80 px-2 py-0.5 uppercase">
+                  POR {{ $list->owner->name }}
+                </span>
+              </div>
+            </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          @foreach ($sharedLists as $list)
-            <div
-              wire:key="shared-list-{{ $list->id }}"
-              class="group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/90 dark:border-gray-700/70 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
-            >
+            <div class="p-space-lg flex-1 flex flex-col justify-between">
               <div>
-                <div class="flex items-start justify-between gap-3 mb-2">
-                  <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition">
-                    <a href="{{ route('lists.show', $list) }}" wire:navigate>
+                <div class="flex items-start justify-between gap-space-xs mb-space-xs">
+                  <h2 class="font-headline-md text-headline-md text-on-surface font-semibold tracking-tight">
+                    <a href="{{ route('lists.show', $list) }}" wire:navigate class="hover:text-primary transition-colors">
                       {{ $list->name }}
                     </a>
-                  </h3>
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300">
-                    Membro
-                  </span>
+                  </h2>
+
+                  <!-- Options Dropdown Menu -->
+                  <div class="relative" x-data="{ menuOpen: false }">
+                    <button
+                      @click="menuOpen = !menuOpen"
+                      @click.away="menuOpen = false"
+                      class="text-on-surface-variant hover:text-primary transition-colors p-1"
+                      title="Opções da lista"
+                    >
+                      <span class="material-symbols-outlined text-[20px]">more_vert</span>
+                    </button>
+
+                    <div
+                      x-show="menuOpen"
+                      x-transition
+                      class="absolute right-0 mt-1 w-44 bg-surface-container-high border border-surface-variant shadow-2xl py-1 z-30"
+                      style="display: none;"
+                    >
+                      <button
+                        type="button"
+                        @click="
+                          navigator.clipboard.writeText('{{ url('/lists/join/' . $list->invite_code) }}');
+                          menuOpen = false;
+                        "
+                        class="w-full text-left px-3 py-2 font-label-md text-label-md text-on-surface hover:bg-surface-bright flex items-center gap-1.5"
+                      >
+                        <span class="material-symbols-outlined text-sm text-primary">share</span>
+                        Copiar Convite
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Criada por <strong class="text-gray-700 dark:text-gray-200">{{ $list->owner->name }}</strong>
+                <p class="font-body-sm text-body-sm text-outline mb-space-xs">
+                  Criada por <strong class="text-on-surface">{{ $list->owner->name }}</strong>
                 </p>
 
                 @if ($list->description)
-                  <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4">
+                  <p class="font-body-md text-body-md text-on-surface-variant mb-space-md line-clamp-2">
                     {{ $list->description }}
                   </p>
                 @endif
+              </div>
 
-                <div class="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 my-3">
-                  <span class="flex items-center gap-1 font-medium">
-                    <span class="text-rose-500">📍</span> {{ $list->places_count }} lugares
-                  </span>
-                  <span>•</span>
-                  <span>✅ {{ $list->visited_places_count }} visitados</span>
+              <div>
+                <!-- Stats -->
+                <div class="bg-surface-container-low px-space-md py-space-sm mb-space-md flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm">
+                  <div class="flex items-center gap-space-xs">
+                    <span class="material-symbols-outlined text-primary text-[16px]">restaurant</span>
+                    <span class="text-on-surface font-medium">{{ $list->places_count }} {{ Str::plural('lugar', $list->places_count) }}</span>
+                    <span>•</span>
+                    <span>{{ $list->visited_places_count }} visitados</span>
+                  </div>
+                  <span class="text-outline uppercase tracking-wider">Membro</span>
+                </div>
+
+                <!-- Action buttons -->
+                <div class="grid grid-cols-2 gap-space-sm">
+                  <a
+                    href="{{ route('lists.show', $list) }}"
+                    wire:navigate
+                    class="bg-primary hover:bg-primary-fixed-dim text-on-primary font-label-md text-label-md py-2.5 px-space-sm flex items-center justify-center gap-1.5 transition-colors shadow-sm font-semibold text-center"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">casino</span>
+                    Girar roleta
+                  </a>
+                  <a
+                    href="{{ route('lists.show', $list) }}"
+                    wire:navigate
+                    class="bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-md text-label-md py-2.5 px-space-sm flex items-center justify-center gap-1.5 transition-colors text-center"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">visibility</span>
+                    Ver lugares
+                  </a>
                 </div>
               </div>
-
-              <div class="pt-4 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-end">
-                <a
-                  href="{{ route('lists.show', $list) }}"
-                  wire:navigate
-                  class="px-3.5 py-1.5 rounded-lg bg-gray-900 dark:bg-gray-700 hover:bg-rose-600 dark:hover:bg-rose-600 text-white text-xs font-semibold transition"
-                >
-                  Abrir ➔
-                </a>
-              </div>
             </div>
-          @endforeach
-        </div>
+          </article>
+        @endforeach
       </div>
     @endif
-  </div>
+  </section>
 
   <!-- Create List Modal -->
   @if ($showCreateModal)
-    <div class="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div
-        class="bg-white dark:bg-gray-800 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-200 dark:border-gray-700 transform transition-all"
+        class="bg-surface-container border border-surface-variant p-space-lg shadow-2xl max-w-md w-full relative"
         @click.away="$wire.set('showCreateModal', false)"
       >
-        <div class="flex items-center justify-between mb-5">
-          <h3 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <span>✨</span> Criar Nova Lista
-          </h3>
+        <div class="flex items-center justify-between pb-space-md border-b border-surface-variant/50 mb-space-md">
+          <div class="flex items-center gap-space-xs">
+            <span class="material-symbols-outlined text-primary text-xl">post_add</span>
+            <h3 class="font-headline-md text-headline-md text-on-surface font-bold">
+              Nova Lista
+            </h3>
+          </div>
           <button
             type="button"
             wire:click="$set('showCreateModal', false)"
-            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl leading-none"
+            class="text-outline hover:text-on-surface transition-colors"
           >
-            &times;
+            <span class="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
 
-        <form wire:submit="createList" class="space-y-4">
+        <form wire:submit="createList" class="flex flex-col gap-space-md">
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-1">
+            <label class="block font-label-sm text-label-sm uppercase tracking-wider text-outline mb-1">
               Nome da Lista *
             </label>
             <input
               type="text"
               wire:model="name"
-              placeholder="Ex: Rolês com o Mozão, Hamburguerias, Almoço de Sexta..."
-              class="w-full text-sm px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-rose-500 focus:outline-none"
+              placeholder="Ex: Sexta-feira com o Mozão, PFs da Firma..."
+              class="w-full bg-surface-container-high border border-surface-variant text-on-surface placeholder:text-outline px-space-md py-2.5 font-body-md focus:border-primary focus:outline-none"
               required
               autofocus
             />
             @error('name')
-              <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
+              <p class="mt-1 text-xs text-error font-medium">{{ $message }}</p>
             @enderror
           </div>
 
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-1">
+            <label class="block font-label-sm text-label-sm uppercase tracking-wider text-outline mb-1">
               Descrição (opcional)
             </label>
             <textarea
               wire:model="description"
               rows="3"
-              placeholder="Ex: Lugares que queremos conhecer em Salvador para comemorar ocasiões especiais."
-              class="w-full text-sm px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-rose-500 focus:outline-none"
+              placeholder="Ex: Lugares românticos com comida farta e preço bom pra ir em casal."
+              class="w-full bg-surface-container-high border border-surface-variant text-on-surface placeholder:text-outline px-space-md py-2.5 font-body-md focus:border-primary focus:outline-none"
             ></textarea>
             @error('description')
-              <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
+              <p class="mt-1 text-xs text-error font-medium">{{ $message }}</p>
             @enderror
           </div>
 
-          <div class="pt-4 flex items-center justify-end gap-3">
+          <div class="pt-space-sm flex items-center justify-end gap-space-sm">
             <button
               type="button"
               wire:click="$set('showCreateModal', false)"
-              class="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              class="px-space-md py-2 bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-md text-label-md transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              class="px-5 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 shadow-md shadow-rose-500/20 transition cursor-pointer"
+              class="px-space-lg py-2 bg-primary hover:bg-primary/90 text-on-primary font-label-md text-label-md font-semibold transition-colors shadow-md cursor-pointer"
             >
-              Criar Lista
+              Salvar Lista
             </button>
           </div>
         </form>
@@ -408,3 +539,4 @@ new #[Layout('layouts.app'), Title('Minhas Listas - Onde Vamos Comer')] class ex
     </div>
   @endif
 </div>
+

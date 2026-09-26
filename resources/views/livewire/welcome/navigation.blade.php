@@ -2,24 +2,24 @@
   @auth
     <a
       href="{{ url('/dashboard') }}"
-      class="rounded-md px-3 py-2 text-black ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
+      class="px-4 py-2 font-label-md text-label-md font-semibold text-on-surface hover:text-primary hover:bg-surface-container-high transition rounded-md"
     >
-      Dashboard
+      Entrar no App
     </a>
   @else
     <a
       href="{{ route('login') }}"
-      class="rounded-md px-3 py-2 text-black ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
+      class="px-4 py-2 font-label-md text-label-md text-on-surface hover:text-primary transition"
     >
-      Log in
+      Entrar
     </a>
 
     @if (Route::has('register'))
       <a
         href="{{ route('register') }}"
-        class="rounded-md px-3 py-2 text-black ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
+        class="px-4 py-2 bg-primary text-on-primary font-label-md text-label-md font-semibold hover:bg-primary/90 transition shadow-sm rounded-md"
       >
-        Register
+        Cadastrar
       </a>
     @endif
   @endauth
