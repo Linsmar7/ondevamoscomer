@@ -70,18 +70,18 @@ class Place extends Model {
 
     $detailsParts = [];
     $detailsParts[] = 'Restaurante sorteado pelo app Onde Vamos Comer!';
-    if (!empty($this->price_range)) {
+    if (! empty($this->price_range)) {
       $detailsParts[] = "Preço: {$this->price_range->value}";
     }
-    if (!empty($this->description)) {
+    if (! empty($this->description)) {
       $detailsParts[] = "Notas/Recomendações: {$this->description}";
     }
-    if (!empty($this->google_maps_url)) {
+    if (! empty($this->google_maps_url)) {
       $detailsParts[] = "Google Maps: {$this->google_maps_url}";
-    } elseif (!empty($this->address)) {
+    } elseif (! empty($this->address)) {
       $detailsParts[] = "Endereço: {$this->address}";
     }
-    if (!empty($this->external_link)) {
+    if (! empty($this->external_link)) {
       $detailsParts[] = "Link: {$this->external_link}";
     }
 

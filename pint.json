@@ -7,6 +7,9 @@
       "control_structures_opening_brace": "same_line",
       "anonymous_classes_opening_brace": "same_line",
       "anonymous_functions_opening_brace": "same_line"
-    }
+    },
+    "statement_indentation": false,
+    "method_chaining_indentation": false,
+    "array_indentation": false
   }
 }

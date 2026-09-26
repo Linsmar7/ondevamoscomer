@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Enums\PriceRange;
-use App\Models\Place;
 use App\Models\RestaurantList;
 use App\Models\User;
 use Illuminate\Database\Seeder;

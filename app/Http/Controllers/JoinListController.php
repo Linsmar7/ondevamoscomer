@@ -22,7 +22,7 @@ class JoinListController extends Controller {
         ->with('status', 'Você é o dono desta lista!');
     }
 
-    if (!$list->members()->where('users.id', $user->id)->exists()) {
+    if (! $list->members()->where('users.id', $user->id)->exists()) {
       $list->members()->attach($user->id, ['role' => 'member']);
     }
 
