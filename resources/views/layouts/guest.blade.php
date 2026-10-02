@@ -5,7 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'Onde Vamos Comer?') }}</title>
+    <title>{{ $title ?? (config('app.name') ?: 'Onde Vamos Comer?') }}</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
+
+    <!-- Primary Meta Tags -->
+    <meta name="title" content="{{ $title ?? 'Onde Vamos Comer? · Decida sem estresse' }}">
+    <meta name="description" content="Decida onde comer com os amigos sem complicação. Crie listas colaborativas e gire a roleta gastronômica!">
+
+    <!-- Open Graph / Facebook / WhatsApp -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:title" content="{{ $title ?? 'Onde Vamos Comer? · Decida sem estresse' }}">
+    <meta property="og:description" content="Decida onde comer com os amigos sem complicação. Crie listas colaborativas e gire a roleta gastronômica!">
+    <meta property="og:image" content="{{ asset('og-preview.png') }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="{{ url()->current() }}">
+    <meta name="twitter:title" content="{{ $title ?? 'Onde Vamos Comer? · Decida sem estresse' }}">
+    <meta name="twitter:description" content="Decida onde comer com os amigos sem complicação. Crie listas colaborativas e gire a roleta gastronômica!">
+    <meta name="twitter:image" content="{{ asset('og-preview.png') }}">
 
     <!-- Google Fonts & Material Symbols -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

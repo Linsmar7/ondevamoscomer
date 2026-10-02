@@ -78,7 +78,7 @@ new #[Layout('layouts.app')] class extends Component {
     if ($this->roulettePriceFilter !== 'all') {
       $rouletteQuery->where('price_range', $this->roulettePriceFilter);
     }
-    $rouletteCandidates = $rouletteQuery->get(['id', 'name', 'price_range', 'address', 'description']);
+    $rouletteCandidates = $rouletteQuery->orderBy('id')->get(['id', 'name', 'price_range', 'address', 'description'])->values();
 
     $pickedPlace = $this->pickedPlaceId ? Place::find($this->pickedPlaceId) : null;
 
@@ -223,6 +223,10 @@ new #[Layout('layouts.app')] class extends Component {
   }
 }; ?>
 
+<x-slot:title>
+  {{ $list->name }} · {{ config('app.name', 'Onde Vamos Comer?') }}
+</x-slot:title>
+
 <div
   class="flex flex-col w-full"
   x-data="{
@@ -230,7 +234,7 @@ new #[Layout('layouts.app')] class extends Component {
     isSpinning: false,
     currentRotation: 0,
     spinsCount: 0,
-    chosenWinner: {{ $pickedPlace ? Js::from($pickedPlace) : 'null' }},
+    chosenWinner: null,
     copiedShare: false,
 
     init() {
@@ -333,10 +337,10 @@ new #[Layout('layouts.app')] class extends Component {
       const selectedIndex = Math.floor(Math.random() * total);
       const chosen = this.candidates[selectedIndex];
 
-      // Top pointer is at 270 degrees
+      // Top pointer is at 270 degrees (12 o'clock)
       const extraSpins = (5 + Math.floor(Math.random() * 3)) * 360;
       const chosenMidAngle = (selectedIndex * angleStep) + (angleStep / 2);
-      const targetOffset = (270 - chosenMidAngle + 360 * 10) % 360;
+      const targetOffset = (270 - chosenMidAngle + 3600) % 360;
       const currentMod = ((this.currentRotation % 360) + 360) % 360;
       const delta = (targetOffset - currentMod + 360) % 360;
 
@@ -348,7 +352,7 @@ new #[Layout('layouts.app')] class extends Component {
         this.chosenWinner = chosen;
         $wire.selectWinner(chosen.id);
 
-        if (window.confetti) {
+        if (typeof window.confetti === 'function') {
           window.confetti({
             particleCount: 120,
             spread: 80,
@@ -470,8 +474,8 @@ new #[Layout('layouts.app')] class extends Component {
           <!-- The Roulette Disk -->
           <div class="relative w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 my-space-md flex items-center justify-center">
             <!-- Downward Pointer Arrow -->
-            <div class="absolute -top-3 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center pointer-events-none">
-              <div class="w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[20px] border-t-secondary-container drop-shadow-md"></div>
+            <div class="absolute -top-3 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center pointer-events-none drop-shadow-md">
+              <div class="w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[22px] border-t-primary-container filter drop-shadow"></div>
             </div>
 
             <!-- Rotating Disk Container -->
@@ -479,20 +483,16 @@ new #[Layout('layouts.app')] class extends Component {
               class="w-full h-full relative"
               id="roulette-container"
               wire:ignore
-              :style="{
-                transform: `rotate(${currentRotation}deg)`,
-                transition: isSpinning ? 'transform 4s cubic-bezier(0.17, 0.89, 0.25, 1.02)' : 'none',
-                transformOrigin: '50% 50%'
-              }"
+              style="transform-origin: 50% 50%; transition: transform 4s cubic-bezier(0.15, 0.9, 0.25, 1.0);"
+              :style="{ transform: `rotate(${currentRotation}deg)` }"
             >
               <svg class="w-full h-full drop-shadow-2xl" viewBox="0 0 400 400">
                 <g id="wheelSvgGroup" transform="translate(200, 200)"></g>
+                <!-- Native SVG Center Hub Pin (cannot be square) -->
+                <circle cx="200" cy="200" r="22" fill="#141b2b" stroke="#2e3545" stroke-width="4"/>
+                <circle cx="200" cy="200" r="14" fill="#232a3a" stroke="#f59e0b" stroke-width="2"/>
+                <circle cx="200" cy="200" r="5" fill="#f43f5e"/>
               </svg>
-            </div>
-
-            <!-- Central Decorative Hub Pin -->
-            <div class="absolute z-20 w-10 h-10 rounded-full bg-surface-container-highest border-2 border-surface-variant shadow-lg flex items-center justify-center pointer-events-none">
-              <div class="w-3.5 h-3.5 rounded-full bg-primary shadow-sm"></div>
             </div>
           </div>
 
@@ -598,39 +598,6 @@ new #[Layout('layouts.app')] class extends Component {
             </div>
           </div>
         </div>
-
-        <!-- Recent Sighting Context -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
-          <div class="bg-surface-container-lowest p-space-md flex items-center gap-space-sm border border-surface-variant/40">
-            <div class="w-14 h-14 bg-surface-container-low flex items-center justify-center text-primary shrink-0">
-              <span class="material-symbols-outlined text-2xl">casino</span>
-            </div>
-            <div class="flex flex-col min-w-0">
-              <span class="font-label-sm text-label-sm text-primary uppercase">Mais Sorteado</span>
-              <span class="font-headline-sm text-headline-sm text-on-surface truncate">
-                {{ $mostPickedPlace?->name ?? 'Em breve' }}
-              </span>
-              <span class="font-body-sm text-body-sm text-on-surface-variant">
-                {{ $mostPickedPlace ? $mostPickedPlace->visit_histories_count . ' ' . Str::plural('vitória', $mostPickedPlace->visit_histories_count) : 'Favorito das noites' }}
-              </span>
-            </div>
-          </div>
-
-          <div class="bg-surface-container-lowest p-space-md flex items-center gap-space-sm border border-surface-variant/40">
-            <div class="w-14 h-14 bg-surface-container-low flex items-center justify-center text-secondary shrink-0">
-              <span class="material-symbols-outlined text-2xl">verified</span>
-            </div>
-            <div class="flex flex-col min-w-0">
-              <span class="font-label-sm text-label-sm text-secondary uppercase">Última Vitória</span>
-              <span class="font-headline-sm text-headline-sm text-on-surface truncate">
-                {{ $lastWinnerPlace?->name ?? 'Nenhum ainda' }}
-              </span>
-              <span class="font-body-sm text-body-sm text-on-surface-variant">
-                {{ $lastWinnerHistory ? 'Sorteado ' . $lastWinnerHistory->visited_at->diffForHumans() : 'Aguardando primeiro sorteio' }}
-              </span>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- Right Column: Lugares (List & Configuration) -->
@@ -670,22 +637,19 @@ new #[Layout('layouts.app')] class extends Component {
             @endif
           </div>
 
-          <!-- Items Checklist -->
+          <!-- Places List -->
           <div class="flex flex-col gap-1.5 max-h-[460px] overflow-y-auto pr-1" id="places-list">
             @forelse ($places as $place)
               <div
                 wire:key="place-item-{{ $place->id }}"
-                class="flex items-center justify-between p-space-sm bg-surface-container hover:bg-surface-container-high transition-colors {{ $place->visited ? 'opacity-65' : '' }}"
+                class="flex items-center justify-between p-space-sm bg-surface-container hover:bg-surface-container-high transition-colors"
               >
-                <label class="flex items-center gap-space-sm cursor-pointer select-none min-w-0 flex-1">
-                  <input
-                    type="checkbox"
-                    wire:click="toggleVisited({{ $place->id }})"
-                    @checked($place->visited)
-                    class="w-4 h-4 rounded-none accent-primary-container bg-surface-container-highest cursor-pointer border-surface-variant"
-                  >
+                <div class="flex items-center gap-space-sm min-w-0 flex-1">
+                  <div class="w-8 h-8 bg-surface-container-highest flex items-center justify-center text-primary shrink-0">
+                    <span class="material-symbols-outlined text-[18px]">restaurant</span>
+                  </div>
                   <div class="flex flex-col min-w-0">
-                    <span class="font-body-md text-body-md text-on-surface font-medium truncate {{ $place->visited ? 'line-through text-outline' : '' }}">
+                    <span class="font-body-md text-body-md text-on-surface font-medium truncate">
                       {{ $place->name }}
                     </span>
                     @if ($place->address)
@@ -694,7 +658,7 @@ new #[Layout('layouts.app')] class extends Component {
                       </span>
                     @endif
                   </div>
-                </label>
+                </div>
 
                 <div class="flex items-center gap-space-xs shrink-0 ml-2">
                   @if ($place->price_range)

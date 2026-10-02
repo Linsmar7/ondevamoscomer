@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview Open Graph - Onde Vamos Comer?</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: #050811;
+      font-family: 'Work Sans', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 0 48px;
+      color: #dce2f7;
+    }
+    .instructions {
+      max-width: 1200px;
+      margin-bottom: 16px;
+      padding: 12px 20px;
+      background: #141b2b;
+      border: 1px solid #2e3545;
+      font-size: 14px;
+      color: #ffc174;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-radius: 6px;
+    }
+    .instructions code {
+      background: #232a3a;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #ffffff;
+    }
+    /* Exactly 1200 x 630 px */
+    .og-canvas {
+      width: 1200px;
+      height: 630px;
+      background: linear-gradient(135deg, #070e1d 0%, #0c1322 50%, #141b2b 100%);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 60px 72px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px #2e3545;
+    }
+
+    /* Ambient background glowing circles */
+    .glow-1 {
+      position: absolute;
+      top: -120px;
+      right: -80px;
+      width: 520px;
+      height: 520px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, rgba(244, 63, 94, 0.08) 50%, transparent 70%);
+      pointer-events: none;
+    }
+    .glow-2 {
+      position: absolute;
+      bottom: -160px;
+      left: 20%;
+      width: 480px;
+      height: 480px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(168, 85, 247, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* Top bar: Brand */
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+      z-index: 2;
+    }
+    .logo-badge {
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #191f2f;
+      border: 1px solid #2e3545;
+      border-radius: 12px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    }
+    .brand-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+    }
+    .brand-pill {
+      margin-left: 12px;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #ffc174;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+    }
+
+    /* Content Layout */
+    .main-body {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 40px;
+      position: relative;
+      z-index: 2;
+      flex: 1;
+      margin: 20px 0;
+    }
+    .headline-area {
+      max-width: 640px;
+    }
+    .headline-h1 {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 58px;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -1.5px;
+      color: #ffffff;
+      margin-bottom: 18px;
+    }
+    .headline-h1 span.highlight {
+      background: linear-gradient(135deg, #ffc174 0%, #ff8a98 50%, #f43f5e 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .headline-sub {
+      font-size: 21px;
+      line-height: 1.45;
+      color: #a08e7a;
+      font-weight: 400;
+      margin-bottom: 24px;
+    }
+    .pills-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .feature-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #141b2b;
+      border: 1px solid #2e3545;
+      color: #dce2f7;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 8px;
+    }
+    .feature-pill svg {
+      width: 18px;
+      height: 18px;
+      fill: #ffc174;
+    }
+
+    /* Right visual: Glowing Roulette Art */
+    .wheel-visual {
+      position: relative;
+      width: 340px;
+      height: 340px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .wheel-glow-ring {
+      position: absolute;
+      inset: -12px;
+      border-radius: 50%;
+      background: conic-gradient(from 180deg, rgba(245, 158, 11, 0.4), rgba(244, 63, 94, 0.4), rgba(56, 189, 248, 0.3), rgba(245, 158, 11, 0.4));
+      filter: blur(18px);
+      opacity: 0.6;
+    }
+
+    /* Bottom footer bar */
+    .footer-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid rgba(46, 53, 69, 0.6);
+      padding-top: 18px;
+      position: relative;
+      z-index: 2;
+    }
+    .domain-tag {
+      font-size: 15px;
+      color: #ffc174;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .author-tag {
+      font-size: 14px;
+      color: #a08e7a;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="instructions">
+    <div>
+      📸 <strong>Instruções:</strong> Abra esta página em 100% de zoom. O quadro abaixo mede exatamente <code>1200 × 630 px</code>. Tire um print apenas do quadro e salve como <code>public/og-preview.png</code>.
+    </div>
+  </div>
+
+  <div class="og-canvas" id="canvas">
+    <div class="glow-1"></div>
+    <div class="glow-2"></div>
+
+    <!-- Header / Brand -->
+    <div class="brand-row">
+      <div class="logo-badge">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" fill="none" style="width: 36px; height: 36px;">
+          <circle cx="120" cy="120" r="105" fill="#141b2b" stroke="#323949" stroke-width="4"/>
+          <circle cx="120" cy="120" r="92" stroke="#f59e0b" stroke-width="3" stroke-dasharray="8 6" opacity="0.8"/>
+          <path d="M120 48 V62" stroke="#f43f5e" stroke-width="6" stroke-linecap="round"/>
+          <circle cx="120" cy="46" r="7" fill="#f43f5e"/>
+          <path d="M52 142 C52 90 82 66 120 66 C158 66 188 90 188 142 Z" fill="#1e293b" stroke="#f8fafc" stroke-width="5" stroke-linejoin="round"/>
+          <path d="M120 66 L120 142" stroke="#f59e0b" stroke-width="3.5" opacity="0.9"/>
+          <path d="M80 84 L120 142" stroke="#f43f5e" stroke-width="3.5" opacity="0.8"/>
+          <path d="M160 84 L120 142" stroke="#38bdf8" stroke-width="3.5" opacity="0.8"/>
+          <path d="M56 120 L120 142" stroke="#a855f7" stroke-width="3" opacity="0.7"/>
+          <path d="M184 120 L120 142" stroke="#10b981" stroke-width="3" opacity="0.7"/>
+          <rect x="42" y="142" width="156" height="14" rx="2" fill="#0f172a" stroke="#f8fafc" stroke-width="4"/>
+          <path d="M85 168 L155 188" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/>
+          <path d="M155 168 L85 188" stroke="#f43f5e" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="120" cy="178" r="5" fill="#f8fafc"/>
+        </svg>
+      </div>
+      <span class="brand-title">onde vamos comer?</span>
+      <span class="brand-pill">Roleta Gastronômica</span>
+    </div>
+
+    <!-- Main Section -->
+    <div class="main-body">
+      <div class="headline-area">
+        <h1 class="headline-h1">
+          Decida onde comer com os amigos <span class="highlight">sem estresse.</span>
+        </h1>
+        <p class="headline-sub">
+          Crie listas colaborativas de restaurantes, convide o grupo e deixe a roleta definir a parada de hoje!
+        </p>
+        <div class="pills-row">
+          <div class="feature-pill">
+            <span>🎲</span> Sorteio Imparcial
+          </div>
+          <div class="feature-pill">
+            <span>👥</span> Listas com Amigos
+          </div>
+          <div class="feature-pill">
+            <span>📅</span> Integração Google Agenda
+          </div>
+          <div class="feature-pill">
+            <span>📍</span> Direto pro Google Maps
+          </div>
+        </div>
+      </div>
+
+      <!-- Roulette Artwork -->
+      <div class="wheel-visual">
+        <div class="wheel-glow-ring"></div>
+        <svg viewBox="0 0 340 340" style="width: 100%; height: 100%; filter: drop-shadow(0 15px 30px rgba(0,0,0,0.6));">
+          <!-- Wheel Outer Border -->
+          <circle cx="170" cy="170" r="162" fill="#141b2b" stroke="#323949" stroke-width="4"/>
+          <circle cx="170" cy="170" r="158" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="8 6" opacity="0.7"/>
+
+          <!-- 6 Slices -->
+          <!-- 1: Pizza -->
+          <path d="M 170 170 L 170 16 A 154 154 0 0 1 303.36 93 Z" fill="#d4004b"/>
+          <text x="215" y="85" fill="#ffffff" font-size="14" font-weight="700" transform="rotate(30, 215, 85)" text-anchor="middle" font-family="'Work Sans', sans-serif">🍕 Pizza</text>
+
+          <!-- 2: Hambúrguer -->
+          <path d="M 170 170 L 303.36 93 A 154 154 0 0 1 303.36 247 Z" fill="#1e293b"/>
+          <text x="260" y="174" fill="#ffc174" font-size="14" font-weight="700" transform="rotate(90, 260, 174)" text-anchor="middle" font-family="'Work Sans', sans-serif">🍔 Burger</text>
+
+          <!-- 3: Sushi -->
+          <path d="M 170 170 L 303.36 247 A 154 154 0 0 1 170 324 Z" fill="#232a3a"/>
+          <text x="215" y="260" fill="#ffffff" font-size="14" font-weight="700" transform="rotate(150, 215, 260)" text-anchor="middle" font-family="'Work Sans', sans-serif">🍣 Sushi</text>
+
+          <!-- 4: Tacos -->
+          <path d="M 170 170 L 170 324 A 154 154 0 0 1 36.64 247 Z" fill="#d4004b"/>
+          <text x="125" y="260" fill="#ffffff" font-size="14" font-weight="700" transform="rotate(210, 125, 260)" text-anchor="middle" font-family="'Work Sans', sans-serif">🌮 Tacos</text>
+
+          <!-- 5: Massas -->
+          <path d="M 170 170 L 36.64 247 A 154 154 0 0 1 36.64 93 Z" fill="#1e293b"/>
+          <text x="80" y="174" fill="#ffc174" font-size="14" font-weight="700" transform="rotate(270, 80, 174)" text-anchor="middle" font-family="'Work Sans', sans-serif">🍝 Massas</text>
+
+          <!-- 6: Churrasco -->
+          <path d="M 170 170 L 36.64 93 A 154 154 0 0 1 170 16 Z" fill="#232a3a"/>
+          <text x="125" y="85" fill="#ffffff" font-size="14" font-weight="700" transform="rotate(330, 125, 85)" text-anchor="middle" font-family="'Work Sans', sans-serif">🥩 Churras</text>
+
+          <!-- Wheel Rim -->
+          <circle cx="170" cy="170" r="154" fill="none" stroke="#2e3545" stroke-width="3"/>
+
+          <!-- Center Hub Pin -->
+          <circle cx="170" cy="170" r="26" fill="#141b2b" stroke="#f59e0b" stroke-width="4"/>
+          <circle cx="170" cy="170" r="10" fill="#f43f5e"/>
+
+          <!-- Downward Pointer Arrow at top -->
+          <polygon points="170,30 156,6 184,6" fill="#f59e0b" stroke="#141b2b" stroke-width="2"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Footer Bar -->
+    <div class="footer-bar">
+      <span class="domain-tag">ondevamoscomer.com.br</span>
+      <span class="author-tag">Chega de indecisão na hora do almoço e do jantar 🍽️</span>
+    </div>
+  </div>
+
+</body>
+</html>

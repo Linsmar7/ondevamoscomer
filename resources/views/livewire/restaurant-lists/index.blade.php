@@ -7,7 +7,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 
-new #[Layout('layouts.app'), Title('Minhas Listas - Onde Vamos Comer')] class extends Component {
+new #[Layout('layouts.app'), Title('Minhas Listas · Onde Vamos Comer?')] class extends Component {
   public string $name = '';
   public string $description = '';
   public string $joinCode = '';
@@ -292,23 +292,15 @@ new #[Layout('layouts.app'), Title('Minhas Listas - Onde Vamos Comer')] class ex
                   @endif
                 </div>
 
-                <!-- Action buttons -->
-                <div class="grid grid-cols-2 gap-space-sm">
+                <!-- Action button -->
+                <div>
                   <a
                     href="{{ route('lists.show', $list) }}"
                     wire:navigate
-                    class="bg-primary hover:bg-primary-fixed-dim text-on-primary font-label-md text-label-md py-2.5 px-space-sm flex items-center justify-center gap-1.5 transition-colors shadow-sm font-semibold text-center"
+                    class="w-full bg-primary hover:bg-primary-fixed-dim text-on-primary font-label-md text-label-md py-2.5 px-space-sm flex items-center justify-center gap-1.5 transition-colors shadow-sm font-semibold text-center cursor-pointer"
                   >
-                    <span class="material-symbols-outlined text-[16px]">casino</span>
-                    Girar roleta
-                  </a>
-                  <a
-                    href="{{ route('lists.show', $list) }}"
-                    wire:navigate
-                    class="bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-md text-label-md py-2.5 px-space-sm flex items-center justify-center gap-1.5 transition-colors text-center"
-                  >
-                    <span class="material-symbols-outlined text-[16px]">visibility</span>
-                    Ver lugares
+                    <span class="material-symbols-outlined text-[18px]">casino</span>
+                    <span>Abrir lista</span>
                   </a>
                 </div>
               </div>
@@ -404,23 +396,15 @@ new #[Layout('layouts.app'), Title('Minhas Listas - Onde Vamos Comer')] class ex
                   <span class="text-outline uppercase tracking-wider">Membro</span>
                 </div>
 
-                <!-- Action buttons -->
-                <div class="grid grid-cols-2 gap-space-sm">
+                <!-- Action button -->
+                <div>
                   <a
                     href="{{ route('lists.show', $list) }}"
                     wire:navigate
-                    class="bg-primary hover:bg-primary-fixed-dim text-on-primary font-label-md text-label-md py-2.5 px-space-sm flex items-center justify-center gap-1.5 transition-colors shadow-sm font-semibold text-center"
+                    class="w-full bg-primary hover:bg-primary-fixed-dim text-on-primary font-label-md text-label-md py-2.5 px-space-sm flex items-center justify-center gap-1.5 transition-colors shadow-sm font-semibold text-center cursor-pointer"
                   >
-                    <span class="material-symbols-outlined text-[16px]">casino</span>
-                    Girar roleta
-                  </a>
-                  <a
-                    href="{{ route('lists.show', $list) }}"
-                    wire:navigate
-                    class="bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-md text-label-md py-2.5 px-space-sm flex items-center justify-center gap-1.5 transition-colors text-center"
-                  >
-                    <span class="material-symbols-outlined text-[16px]">visibility</span>
-                    Ver lugares
+                    <span class="material-symbols-outlined text-[18px]">casino</span>
+                    <span>Abrir lista</span>
                   </a>
                 </div>
               </div>

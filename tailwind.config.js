@@ -69,7 +69,7 @@ export default {
         lg: '0.25rem',
         xl: '0.5rem',
         '2xl': '0.75rem',
-        full: '0.75rem',
+        full: '9999px',
       },
       spacing: {
         'space-xs': '0.25rem',

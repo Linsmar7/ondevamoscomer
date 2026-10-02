@@ -3,7 +3,31 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Onde Vamos Comer? • Decida sem complicação</title>
+  <title>Onde Vamos Comer? · Decida sem estresse</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+  <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
+
+  <!-- Primary Meta Tags -->
+  <meta name="title" content="Onde Vamos Comer? · Decida sem estresse">
+  <meta name="description" content="Decida onde comer com os amigos sem complicação. Crie listas colaborativas e gire a roleta gastronômica!">
+
+  <!-- Open Graph / Facebook / WhatsApp -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ url()->current() }}">
+  <meta property="og:title" content="Onde Vamos Comer? · Decida sem estresse">
+  <meta property="og:description" content="Decida onde comer com os amigos sem complicação. Crie listas colaborativas e gire a roleta gastronômica!">
+  <meta property="og:image" content="{{ asset('og-preview.png') }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="{{ url()->current() }}">
+  <meta name="twitter:title" content="Onde Vamos Comer? · Decida sem estresse">
+  <meta name="twitter:description" content="Decida onde comer com os amigos sem complicação. Crie listas colaborativas e gire a roleta gastronômica!">
+  <meta name="twitter:image" content="{{ asset('og-preview.png') }}">
 
   <!-- Google Fonts & Material Symbols -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,7 +50,6 @@
       <!-- Navigation Links -->
       <nav class="hidden md:flex items-center gap-space-xs border border-surface-variant/50 p-1 bg-surface-container-lowest">
         <a class="px-space-md py-1.5 font-label-md text-label-md bg-surface-container-high text-primary font-semibold border border-outline/40 transition-colors rounded-none" href="/">Início</a>
-        <a class="px-space-md py-1.5 font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors rounded-none" href="#como-funciona">Como Funciona</a>
         @auth
           <a class="px-space-md py-1.5 font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors rounded-none" href="{{ route('dashboard') }}">Minhas Listas</a>
         @endauth
