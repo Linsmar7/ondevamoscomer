@@ -7,7 +7,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 
-new #[Layout('layouts.app'), Title('Nossas Listas de Comilança - Onde Vamos Comer')] class extends Component {
+new #[Layout('layouts.app'), Title('Minhas Listas - Onde Vamos Comer')] class extends Component {
   public string $name = '';
   public string $description = '';
   public string $joinCode = '';
@@ -112,26 +112,14 @@ new #[Layout('layouts.app'), Title('Nossas Listas de Comilança - Onde Vamos Com
   <!-- Sub-header ambient bar -->
   <section class="w-full bg-surface-container-lowest py-space-xl border-b border-surface-variant/40">
     <div class="max-w-7xl mx-auto px-margin-mobile lg:px-margin">
-      <!-- Tag / Breadcrumb -->
-      <div class="flex items-center gap-space-xs mb-space-sm">
-        <span class="inline-flex items-center gap-1.5 font-label-sm text-label-sm uppercase tracking-widest text-primary font-semibold px-2 py-0.5 bg-surface-container-low shadow-sm">
-          <span class="material-symbols-outlined text-[14px]">book_2</span>
-          [CADERNINHO DE RECOMENDAÇÕES]
-        </span>
-        <span class="text-on-surface-variant font-label-sm text-label-sm">•</span>
-        <span class="text-on-surface-variant font-label-sm text-label-sm tracking-wide">
-          {{ $ownedLists->count() + $sharedLists->count() }} {{ Str::plural('lista ativa', $ownedLists->count() + $sharedLists->count()) }}
-        </span>
-      </div>
-
-      <!-- Main Headline & Intro -->
+      <!-- Main Headline & Actions -->
       <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-space-md">
-        <div class="max-w-2xl">
-          <h1 class="font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface tracking-tight mb-space-xs font-bold">
-            Nossas listas de comilança
+        <div>
+          <h1 class="font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface tracking-tight font-bold">
+            Minhas Listas
           </h1>
-          <p class="font-body-lg text-body-lg text-on-surface-variant">
-            Os lugares que a gente anotou pra quando bater a fome e ninguém souber decidir. Sem firula, direto ao prato.
+          <p class="font-label-sm text-label-sm text-on-surface-variant tracking-wide mt-1">
+            {{ $ownedLists->count() + $sharedLists->count() }} {{ Str::plural('lista ativa', $ownedLists->count() + $sharedLists->count()) }}
           </p>
         </div>
 
@@ -170,26 +158,6 @@ new #[Layout('layouts.app'), Title('Nossas Listas de Comilança - Onde Vamos Com
       @enderror
     </div>
   </section>
-
-  <!-- Editorial Metadata Strip -->
-  <div class="w-full bg-surface-container-low border-b border-surface-variant/30">
-    <div class="max-w-7xl mx-auto px-margin-mobile lg:px-margin py-2.5 flex flex-wrap items-center justify-between gap-space-sm font-label-sm text-label-sm text-on-surface-variant">
-      <div class="flex items-center gap-space-md">
-        <span class="flex items-center gap-1.5 text-on-surface">
-          <span class="w-1.5 h-1.5 bg-primary"></span>
-          SINCRONIZADO VIA LINK LOCAL
-        </span>
-        <span class="hidden sm:inline text-outline-variant">/</span>
-        <span class="hidden sm:inline">ROULETE GASTRONÔMICA INDIE</span>
-      </div>
-      <div class="flex items-center gap-space-sm">
-        <span class="text-outline">ORDENAR:</span>
-        <span class="text-primary font-semibold">Mais recentes</span>
-        <span class="text-outline-variant">•</span>
-        <span class="text-on-surface-variant">Mais visitadas</span>
-      </div>
-    </div>
-  </div>
 
   <!-- Status / Flash Message -->
   @if (session('status'))

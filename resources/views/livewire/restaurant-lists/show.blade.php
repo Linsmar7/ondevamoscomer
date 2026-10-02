@@ -3,6 +3,7 @@
 use App\Enums\PriceRange;
 use App\Models\Place;
 use App\Models\RestaurantList;
+use App\Models\VisitHistory;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -17,7 +18,7 @@ new #[Layout('layouts.app')] class extends Component {
   public string $filterPrice = 'all';
 
   // Roulette config & state
-  public string $rouletteStatusFilter = 'not_visited';
+  public string $rouletteStatusFilter = 'all';
   public string $roulettePriceFilter = 'all';
   public ?int $pickedPlaceId = null;
 
@@ -81,14 +82,26 @@ new #[Layout('layouts.app')] class extends Component {
 
     $pickedPlace = $this->pickedPlaceId ? Place::find($this->pickedPlaceId) : null;
 
-    $lastVisitedPlace = $list->places()->where('visited', true)->latest('updated_at')->first();
+    $lastWinnerHistory = VisitHistory::whereHas('place', fn($q) => $q->where('restaurant_list_id', $this->listId))
+      ->with('place')
+      ->latest('visited_at')
+      ->first();
+    $lastWinnerPlace = $lastWinnerHistory?->place;
+
+    $mostPickedPlace = $list->places()
+      ->whereHas('visitHistories')
+      ->withCount('visitHistories')
+      ->orderByDesc('visit_histories_count')
+      ->first();
 
     return [
       'list' => $list,
       'places' => $places,
       'rouletteCandidates' => $rouletteCandidates,
       'pickedPlace' => $pickedPlace,
-      'lastVisitedPlace' => $lastVisitedPlace,
+      'lastWinnerPlace' => $lastWinnerPlace,
+      'lastWinnerHistory' => $lastWinnerHistory,
+      'mostPickedPlace' => $mostPickedPlace,
       'priceRanges' => PriceRange::cases(),
     ];
   }
@@ -410,28 +423,14 @@ new #[Layout('layouts.app')] class extends Component {
     <!-- Top Headline Section -->
     <div class="flex flex-col md:flex-row md:items-end justify-between gap-space-lg pb-space-xl">
       <div class="flex flex-col gap-space-xs max-w-3xl">
-        <div class="flex items-center gap-space-xs">
-          <span class="font-label-sm text-label-sm uppercase tracking-widest text-primary-container px-2 py-0.5 bg-surface-container-high">
-            [SORTEIO DA RODADA DE HOJE]
-          </span>
-          <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
-            / {{ $list->name }}
-          </span>
-        </div>
         <h1 class="font-display-lg text-display-lg-mobile md:text-display-lg tracking-tight text-on-surface font-bold">
-          Onde vamos comer hoje?
+          {{ $list->name }}
         </h1>
-        <p class="font-body-lg text-body-lg text-on-surface-variant">
-          {{ $list->description ?: 'A gente nunca consegue decidir onde jantar. Então rodamos essa roletinha com os lugares salvos da lista.' }}
-        </p>
-      </div>
-
-      <div class="flex items-center gap-space-sm bg-surface-container-low p-space-sm border border-surface-variant/40 shrink-0">
-        <div class="flex flex-col">
-          <span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Modo de Decisão</span>
-          <span class="font-headline-sm text-headline-sm text-primary font-bold">Aleatório Absoluto</span>
-        </div>
-        <span class="material-symbols-outlined text-primary text-3xl">casino</span>
+        @if ($list->description)
+          <p class="font-body-lg text-body-lg text-on-surface-variant mt-1">
+            {{ $list->description }}
+          </p>
+        @endif
       </div>
     </div>
 
@@ -460,7 +459,7 @@ new #[Layout('layouts.app')] class extends Component {
             <div class="flex items-center gap-space-xs">
               <button
                 type="button"
-                wire:click="$set('roulettePriceFilter', 'all'); $set('rouletteStatusFilter', 'not_visited');"
+                wire:click="$set('roulettePriceFilter', 'all'); $set('rouletteStatusFilter', 'all');"
                 class="px-space-sm py-1 bg-surface-container text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm uppercase transition-colors cursor-pointer"
               >
                 Resetar Filtros
@@ -491,19 +490,10 @@ new #[Layout('layouts.app')] class extends Component {
               </svg>
             </div>
 
-            <!-- Central Hub Button -->
-            <button
-              type="button"
-              id="spin-hub-btn"
-              @click="spinWheel()"
-              :disabled="isSpinning || candidates.length === 0"
-              class="absolute z-20 w-20 h-20 bg-surface-container-high hover:bg-surface-variant flex flex-col items-center justify-center transition-colors group cursor-pointer shadow-xl border border-surface-variant/60 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span class="font-headline-sm text-headline-sm font-bold text-primary group-hover:scale-105 transition-transform uppercase tracking-wider">
-                Girar
-              </span>
-              <span class="font-label-sm text-label-sm text-outline tracking-tight">RODADA</span>
-            </button>
+            <!-- Central Decorative Hub Pin -->
+            <div class="absolute z-20 w-10 h-10 rounded-full bg-surface-container-highest border-2 border-surface-variant shadow-lg flex items-center justify-center pointer-events-none">
+              <div class="w-3.5 h-3.5 rounded-full bg-primary shadow-sm"></div>
+            </div>
           </div>
 
           <!-- Quick Filter Chips -->
@@ -533,7 +523,7 @@ new #[Layout('layouts.app')] class extends Component {
               wire:click="$set('rouletteStatusFilter', '{{ $rouletteStatusFilter === 'not_visited' ? 'all' : 'not_visited' }}')"
               class="px-space-sm py-1 font-label-md text-label-md font-semibold transition-colors cursor-pointer {{ $rouletteStatusFilter === 'not_visited' ? 'bg-secondary-container text-on-secondary-container' : 'bg-surface-container text-on-surface-variant hover:text-on-surface' }}"
             >
-              {{ $rouletteStatusFilter === 'not_visited' ? '✓ Apenas não visitados' : 'Qualquer status' }}
+              {{ $rouletteStatusFilter === 'not_visited' ? '✓ Apenas não visitados' : 'Todos os status' }}
             </button>
           </div>
 
@@ -544,23 +534,36 @@ new #[Layout('layouts.app')] class extends Component {
           </template>
         </div>
 
-        <!-- Result Display Box Below Roulette -->
-        <div class="bg-surface-container-low p-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md border border-surface-variant/40 shadow-lg">
-          <div class="flex flex-col gap-1 w-full md:w-auto">
-            <span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Status do Giro</span>
-            <div class="font-headline-md text-headline-md font-bold text-on-surface tracking-tight" id="result-text">
-              <span x-show="!isSpinning && !chosenWinner">Dê um giro para descobrir!</span>
-              <span x-show="isSpinning" class="animate-pulse text-primary">Girando a sorte...</span>
-              <span x-show="!isSpinning && chosenWinner" x-text="chosenWinner ? chosenWinner.name : ''" class="text-primary-container"></span>
-            </div>
-            <p class="font-body-sm text-body-sm text-on-surface-variant" id="result-subtext">
-              <span x-show="!isSpinning && !chosenWinner">Clique no botão central ou abaixo para definir o rango.</span>
-              <span x-show="isSpinning">Segurem a fome, a decisão está saindo!</span>
-              <span x-show="!isSpinning && chosenWinner" x-text="chosenWinner && chosenWinner.address ? `📍 ${chosenWinner.address}` : 'Partiu comer!'"></span>
-            </p>
+        <!-- Spin Action Button (Full Width) -->
+        <div class="w-full flex flex-col gap-space-md">
+          <button
+            type="button"
+            id="spin-main-btn"
+            @click="spinWheel()"
+            :disabled="isSpinning || candidates.length === 0"
+            class="w-full py-space-md px-space-xl bg-secondary-container hover:bg-secondary-container/90 text-on-secondary-container font-headline-sm text-headline-sm uppercase tracking-wider font-bold transition-all flex items-center justify-center gap-space-xs shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span class="material-symbols-outlined text-2xl" :class="{ 'animate-spin': isSpinning }">restart_alt</span>
+            <span x-text="isSpinning ? 'Girando a sorte...' : 'Girar a Roleta Agora'"></span>
+          </button>
 
-            <!-- Winner Actions: Calendar & Visited -->
-            <div x-show="!isSpinning && chosenWinner" class="flex flex-wrap items-center gap-space-xs mt-2" style="display: none;">
+          <!-- Winner Announcement Card (Appears after spin or when a place was picked) -->
+          <div
+            x-show="!isSpinning && chosenWinner"
+            x-cloak
+            class="bg-surface-container-low p-space-md border border-primary/40 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-space-md w-full"
+          >
+            <div class="flex flex-col gap-0.5 min-w-0">
+              <span class="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold flex items-center gap-1">
+                <span class="material-symbols-outlined text-base">celebration</span>
+                Restaurante Sorteado!
+              </span>
+              <div class="font-headline-sm text-headline-sm font-bold text-on-surface truncate" x-text="chosenWinner ? chosenWinner.name : ''"></div>
+              <p class="font-body-sm text-body-sm text-on-surface-variant truncate" x-text="chosenWinner && chosenWinner.address ? `📍 ${chosenWinner.address}` : ''"></p>
+            </div>
+
+            <!-- Winner Actions -->
+            <div class="flex flex-wrap items-center gap-space-xs shrink-0">
               @if ($pickedPlace)
                 <a
                   href="{{ $pickedPlace->googleCalendarUrl() }}"
@@ -569,7 +572,7 @@ new #[Layout('layouts.app')] class extends Component {
                   class="px-space-md py-1.5 bg-surface-container-high hover:bg-surface-bright text-on-surface text-xs font-semibold flex items-center gap-1.5 transition-colors border border-surface-variant"
                 >
                   <span class="material-symbols-outlined text-sm text-primary">calendar_today</span>
-                  Google Agenda (1 clique)
+                  Google Agenda
                 </a>
 
                 @if ($pickedPlace->google_maps_url)
@@ -580,7 +583,7 @@ new #[Layout('layouts.app')] class extends Component {
                     class="px-space-md py-1.5 bg-surface-container-high hover:bg-surface-bright text-on-surface text-xs font-semibold flex items-center gap-1.5 transition-colors border border-surface-variant"
                   >
                     <span class="material-symbols-outlined text-sm text-secondary">map</span>
-                    Ver no Maps
+                    Maps
                   </a>
                 @endif
 
@@ -594,17 +597,6 @@ new #[Layout('layouts.app')] class extends Component {
               @endif
             </div>
           </div>
-
-          <button
-            type="button"
-            id="spin-main-btn"
-            @click="spinWheel()"
-            :disabled="isSpinning || candidates.length === 0"
-            class="w-full md:w-auto px-space-lg py-space-md bg-secondary-container hover:opacity-90 text-on-secondary-container font-headline-sm text-headline-sm uppercase tracking-wider font-bold transition-all flex items-center justify-center gap-space-xs shadow-lg cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <span class="material-symbols-outlined">restart_alt</span>
-            <span>Girar a Roleta Agora</span>
-          </button>
         </div>
 
         <!-- Recent Sighting Context -->
@@ -616,9 +608,11 @@ new #[Layout('layouts.app')] class extends Component {
             <div class="flex flex-col min-w-0">
               <span class="font-label-sm text-label-sm text-primary uppercase">Mais Sorteado</span>
               <span class="font-headline-sm text-headline-sm text-on-surface truncate">
-                {{ $places->first()?->name ?? 'Em breve' }}
+                {{ $mostPickedPlace?->name ?? 'Em breve' }}
               </span>
-              <span class="font-body-sm text-body-sm text-on-surface-variant">Favorito das noites</span>
+              <span class="font-body-sm text-body-sm text-on-surface-variant">
+                {{ $mostPickedPlace ? $mostPickedPlace->visit_histories_count . ' ' . Str::plural('vitória', $mostPickedPlace->visit_histories_count) : 'Favorito das noites' }}
+              </span>
             </div>
           </div>
 
@@ -629,24 +623,23 @@ new #[Layout('layouts.app')] class extends Component {
             <div class="flex flex-col min-w-0">
               <span class="font-label-sm text-label-sm text-secondary uppercase">Última Vitória</span>
               <span class="font-headline-sm text-headline-sm text-on-surface truncate">
-                {{ $lastVisitedPlace?->name ?? 'Nenhum ainda' }}
+                {{ $lastWinnerPlace?->name ?? 'Nenhum ainda' }}
               </span>
               <span class="font-body-sm text-body-sm text-on-surface-variant">
-                {{ $lastVisitedPlace ? 'Marcado como visitado' : 'Pronto pro sorteio' }}
+                {{ $lastWinnerHistory ? 'Sorteado ' . $lastWinnerHistory->visited_at->diffForHumans() : 'Aguardando primeiro sorteio' }}
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Right Column: Lugares na Rodada (List & Configuration) -->
+      <!-- Right Column: Lugares (List & Configuration) -->
       <div class="lg:col-span-5 flex flex-col gap-space-md">
         <div class="bg-surface-container-lowest p-space-lg flex flex-col gap-space-md border border-surface-variant/40 shadow-xl">
-          <div class="flex items-start justify-between gap-space-sm pb-space-sm border-b border-surface-variant/30">
-            <div class="flex flex-col">
-              <span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Configuração</span>
-              <h2 class="font-headline-md text-headline-md text-on-surface font-bold">Lugares na rodada</h2>
-              <span class="font-body-sm text-body-sm text-on-surface-variant">Marca ou desmarca pra rodar</span>
+          <div class="flex items-center justify-between gap-space-sm pb-space-sm border-b border-surface-variant/30">
+            <div>
+              <h2 class="font-headline-md text-headline-md text-on-surface font-bold">Lugares</h2>
+              <span class="font-body-sm text-body-sm text-on-surface-variant">Restaurantes cadastrados na lista</span>
             </div>
             <button
               type="button"
@@ -774,31 +767,6 @@ new #[Layout('layouts.app')] class extends Component {
               <span x-text="copiedShare ? 'Texto copiado!' : 'Compartilhar'"></span>
             </button>
           </div>
-        </div>
-
-        <!-- Friendly Tip Card -->
-        <div class="bg-surface-container-low p-space-md flex items-start gap-space-sm border border-surface-variant/40">
-          <span class="material-symbols-outlined text-primary-container text-2xl shrink-0">tips_and_updates</span>
-          <div class="flex flex-col gap-0.5">
-            <span class="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold">Dica dos Criadores</span>
-            <p class="font-body-sm text-body-sm text-on-surface">
-              Sem estresse: se o grupo torcer o nariz pro lugar sorteado, gira de novo sem crise! O importante é forrar o estômago.
-            </p>
-          </div>
-        </div>
-
-        <!-- Última Vitória Card -->
-        <div class="bg-surface-container-lowest p-space-md flex flex-col gap-space-xs border border-surface-variant/40">
-          <div class="flex items-center justify-between">
-            <span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Última vitória</span>
-            <span class="font-label-sm text-label-sm text-secondary uppercase font-semibold">Semana Passada</span>
-          </div>
-          <div class="font-headline-sm text-headline-sm text-on-surface font-bold">
-            {{ $lastVisitedPlace?->name ?? 'Pronto pro sorteio' }}
-          </div>
-          <p class="font-body-sm text-body-sm text-on-surface-variant">
-            {{ $lastVisitedPlace && $lastVisitedPlace->description ? $lastVisitedPlace->description : 'Rendeu porção caprichada e cerveja gelada na mesa.' }}
-          </p>
         </div>
       </div>
     </div>

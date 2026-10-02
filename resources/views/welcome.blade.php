@@ -66,52 +66,131 @@
     <!-- Hero Section -->
     <section class="relative w-full flex-1 flex flex-col justify-center border-b border-surface-variant/40 bg-gradient-to-b from-surface-container-lowest via-surface to-surface py-space-xl lg:py-16">
       <div class="max-w-7xl mx-auto px-margin-mobile lg:px-margin w-full">
-        <div class="flex flex-col items-start gap-space-md max-w-4xl">
-          <!-- Top Badge -->
-          <div class="inline-flex items-center gap-space-xs px-2.5 py-1 bg-surface-container-low text-primary text-label-sm font-label-sm tracking-widest uppercase border border-surface-variant/50">
-            <span class="w-1.5 h-1.5 bg-primary"></span>
-            ZERO INDECISÃO • DIRETO AO PONTO
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg lg:gap-space-xl items-center">
+          
+          <!-- Left Column: Title & CTAs -->
+          <div class="lg:col-span-7 flex flex-col items-start gap-space-md">
+            <!-- Top Badge -->
+            <div class="inline-flex items-center gap-space-xs px-2.5 py-1 bg-surface-container-low text-primary text-label-sm font-label-sm tracking-widest uppercase border border-surface-variant/50">
+              <span class="w-1.5 h-1.5 bg-primary"></span>
+              ZERO INDECISÃO • DIRETO AO PONTO
+            </div>
+
+            <!-- Main Title -->
+            <h1 class="font-headline-lg text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-on-surface leading-[1.12]">
+              Acabe com o <span class="text-primary-container">“tanto faz, escolhe você”</span> na hora de comer.
+            </h1>
+
+            <!-- CTAs -->
+            <div class="flex flex-wrap items-center gap-space-sm pt-space-xs">
+              @auth
+                <a
+                  href="{{ route('dashboard') }}"
+                  class="bg-primary hover:bg-primary/90 text-on-primary px-space-lg py-3 font-label-lg text-label-lg flex items-center gap-space-xs transition-colors shadow-md font-semibold"
+                >
+                  <span class="material-symbols-outlined text-lg">restaurant_menu</span>
+                  Acessar Minhas Listas
+                </a>
+              @else
+                <a
+                  href="{{ route('register') }}"
+                  class="bg-primary hover:bg-primary/90 text-on-primary px-space-lg py-3 font-label-lg text-label-lg flex items-center gap-space-xs transition-colors shadow-md font-semibold"
+                >
+                  <span class="material-symbols-outlined text-lg">rocket_launch</span>
+                  Criar Conta Gratuita
+                </a>
+                <a
+                  href="{{ route('login') }}"
+                  class="bg-surface-container-high hover:bg-surface-bright text-on-surface px-space-lg py-3 font-label-lg text-label-lg flex items-center gap-space-xs transition-colors border border-surface-variant/60"
+                >
+                  <span class="material-symbols-outlined text-lg">login</span>
+                  Já Tenho Conta
+                </a>
+              @endauth
+            </div>
           </div>
 
-          <!-- Main Title -->
-          <h1 class="font-headline-lg text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-on-surface leading-[1.12]">
-            Acabe com o <span class="text-primary-container">“tanto faz, escolhe você”</span> na hora de comer.
-          </h1>
+          <!-- Right Column: Interactive Roulette Preview -->
+          <div class="hidden lg:flex justify-end lg:col-span-5">
+            <div class="flex flex-col items-center bg-surface-container-low border border-surface-variant/50 p-space-md lg:p-space-lg shadow-2xl relative overflow-hidden w-[340px]">
+              <!-- Subtle ambient glow in background -->
+              <div class="absolute -top-12 -right-12 w-36 h-36 bg-primary/10 rounded-full blur-2xl pointer-events-none"></div>
+              <div class="absolute -bottom-12 -left-12 w-36 h-36 bg-secondary-container/10 rounded-full blur-2xl pointer-events-none"></div>
 
-          <!-- CTAs -->
-          <div class="flex flex-wrap items-center gap-space-sm pt-space-xs">
-            @auth
-              <a
-                href="{{ route('dashboard') }}"
-                class="bg-primary hover:bg-primary/90 text-on-primary px-space-lg py-3 font-label-lg text-label-lg flex items-center gap-space-xs transition-colors shadow-md font-semibold"
-              >
-                <span class="material-symbols-outlined text-lg">restaurant_menu</span>
-                Acessar Minhas Listas
-              </a>
-            @else
-              <a
-                href="{{ route('register') }}"
-                class="bg-primary hover:bg-primary/90 text-on-primary px-space-lg py-3 font-label-lg text-label-lg flex items-center gap-space-xs transition-colors shadow-md font-semibold"
-              >
-                <span class="material-symbols-outlined text-lg">rocket_launch</span>
-                Criar Conta Gratuita
-              </a>
-              <a
-                href="{{ route('login') }}"
-                class="bg-surface-container-high hover:bg-surface-bright text-on-surface px-space-lg py-3 font-label-lg text-label-lg flex items-center gap-space-xs transition-colors border border-surface-variant/60"
-              >
-                <span class="material-symbols-outlined text-lg">login</span>
-                Já Tenho Conta
-              </a>
-            @endauth
+              <!-- Header -->
+              <div class="w-full flex items-center justify-between pb-space-xs border-b border-surface-variant/30 mb-space-xs">
+                <div class="flex items-center gap-1.5 text-label-sm font-label-sm uppercase tracking-wider text-primary">
+                  <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                  <span>Roleta Express</span>
+                </div>
+                <span class="text-label-sm font-label-sm px-2 py-0.5 bg-surface-container text-outline border border-surface-variant/40">
+                  Teste Rápido
+                </span>
+              </div>
 
-            <a
-              href="#como-funciona"
-              class="px-space-md py-3 font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1"
-            >
-              <span>Entenda como funciona</span>
-              <span class="material-symbols-outlined text-sm">arrow_downward</span>
-            </a>
+              <!-- Roulette Wheel Container -->
+              <div class="relative w-[260px] h-[260px] my-space-xs flex items-center justify-center">
+                <!-- Top Pointer Arrow -->
+                <div class="absolute -top-2 left-1/2 -translate-x-1/2 z-20 pointer-events-none drop-shadow-md">
+                  <div class="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[16px] border-t-primary"></div>
+                </div>
+
+                <!-- The Wheel SVG (Spins) -->
+                <div id="hero-wheel" class="w-full h-full will-change-transform" style="transform: rotate(0deg); transform-origin: 50% 50%;">
+                  <svg viewBox="0 0 260 260" class="w-full h-full drop-shadow-lg">
+                    <!-- Outer dark ring with dash -->
+                    <circle cx="130" cy="130" r="126" fill="#141b2b" stroke="#2e3545" stroke-width="4"/>
+                    <circle cx="130" cy="130" r="122" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 4" opacity="0.6"/>
+
+                    <!-- Slices -->
+                    <g transform="rotate(0, 130, 130)">
+                      <path d="M 130 130 L 70 26.08 A 120 120 0 0 1 190 26.08 Z" fill="#d4004b"/>
+                      <text x="130" y="56" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle" font-family="'Work Sans', sans-serif">🍕 Pizza</text>
+                    </g>
+                    <g transform="rotate(60, 130, 130)">
+                      <path d="M 130 130 L 70 26.08 A 120 120 0 0 1 190 26.08 Z" fill="#f59e0b"/>
+                      <text x="130" y="56" fill="#141b2b" font-size="12" font-weight="700" text-anchor="middle" font-family="'Work Sans', sans-serif">🍔 Burger</text>
+                    </g>
+                    <g transform="rotate(120, 130, 130)">
+                      <path d="M 130 130 L 70 26.08 A 120 120 0 0 1 190 26.08 Z" fill="#6366f1"/>
+                      <text x="130" y="56" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle" font-family="'Work Sans', sans-serif">🍣 Sushi</text>
+                    </g>
+                    <g transform="rotate(180, 130, 130)">
+                      <path d="M 130 130 L 70 26.08 A 120 120 0 0 1 190 26.08 Z" fill="#0284c7"/>
+                      <text x="130" y="56" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle" font-family="'Work Sans', sans-serif">🌮 Tacos</text>
+                    </g>
+                    <g transform="rotate(240, 130, 130)">
+                      <path d="M 130 130 L 70 26.08 A 120 120 0 0 1 190 26.08 Z" fill="#059669"/>
+                      <text x="130" y="56" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle" font-family="'Work Sans', sans-serif">🍝 Massas</text>
+                    </g>
+                    <g transform="rotate(300, 130, 130)">
+                      <path d="M 130 130 L 70 26.08 A 120 120 0 0 1 190 26.08 Z" fill="#9333ea"/>
+                      <text x="130" y="56" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle" font-family="'Work Sans', sans-serif">🥩 Churras</text>
+                    </g>
+
+                    <circle cx="130" cy="130" r="120" fill="none" stroke="#141b2b" stroke-width="2"/>
+                  </svg>
+                </div>
+
+                <!-- Center Hub Button -->
+                <button
+                  type="button"
+                  id="hero-spin-btn"
+                  class="absolute z-10 w-16 h-16 rounded-full bg-surface-container-high hover:bg-surface-bright flex flex-col items-center justify-center transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-xl border-2 border-primary"
+                  aria-label="Girar roleta"
+                >
+                  <span class="font-headline-sm text-xs font-bold text-primary tracking-wider uppercase">Girar</span>
+                  <span class="material-symbols-outlined text-xs text-outline -mt-0.5">casino</span>
+                </button>
+              </div>
+
+              <!-- Status / Result Message -->
+              <div id="hero-result" class="w-full mt-space-xs pt-space-xs text-center border-t border-surface-variant/30 min-h-[40px] flex items-center justify-center">
+                <p class="font-body-sm text-body-sm text-on-surface-variant">
+                  Aperte <span class="text-primary font-semibold">GIRAR</span> para sortear!
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -169,5 +248,61 @@
       </p>
     </div>
   </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('hero-spin-btn');
+      const wheel = document.getElementById('hero-wheel');
+      const resultEl = document.getElementById('hero-result');
+
+      if (!btn || !wheel || !resultEl) return;
+
+      let isSpinning = false;
+      let currentRotation = 0;
+
+      const items = [
+        { name: 'Pizza', emoji: '🍕' },
+        { name: 'Burger', emoji: '🍔' },
+        { name: 'Sushi', emoji: '🍣' },
+        { name: 'Tacos', emoji: '🌮' },
+        { name: 'Massas', emoji: '🍝' },
+        { name: 'Churras', emoji: '🥩' },
+      ];
+
+      btn.addEventListener('click', () => {
+        if (isSpinning) return;
+        isSpinning = true;
+        btn.disabled = true;
+
+        const selectedIndex = Math.floor(Math.random() * items.length);
+        const fullRotations = 5 * 360;
+        const targetSliceAngle = (360 - selectedIndex * 60) % 360;
+        const jitter = Math.floor(Math.random() * 26) - 13;
+        const currentBase = currentRotation % 360;
+        const diff = (targetSliceAngle - currentBase + 360) % 360;
+
+        currentRotation += fullRotations + diff + jitter;
+
+        wheel.style.transition = 'transform 3.5s cubic-bezier(0.15, 0.9, 0.25, 1.0)';
+        wheel.style.transform = `rotate(${currentRotation}deg)`;
+
+        resultEl.innerHTML = '<span class="text-primary font-medium animate-pulse text-xs">Sorteando o rango de hoje...</span>';
+
+        setTimeout(() => {
+          isSpinning = false;
+          btn.disabled = false;
+          const winner = items[selectedIndex];
+          resultEl.innerHTML = `<span class="text-on-surface font-semibold text-xs">Hoje vai ser: <span class="text-primary font-bold">${winner.emoji} ${winner.name}!</span> Partiu?</span>`;
+          if (typeof window.confetti === 'function') {
+            window.confetti({
+              particleCount: 50,
+              spread: 60,
+              origin: { y: 0.6 }
+            });
+          }
+        }, 3600);
+      });
+    });
+  </script>
 </body>
 </html>
