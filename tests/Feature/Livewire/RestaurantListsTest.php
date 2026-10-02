@@ -86,3 +86,23 @@ test('user can select a winner in the list component', function (): void {
 
   expect($place->visitHistories()->where('user_id', $user->id)->exists())->toBeTrue();
 });
+
+test('user can toggle a place in or out of the roulette', function (): void {
+  $user = User::factory()->create();
+  $list = RestaurantList::factory()->create(['user_id' => $user->id]);
+  $place = Place::factory()->create(['restaurant_list_id' => $list->id, 'name' => 'Pastelaria']);
+
+  expect($place->in_roulette)->toBeTrue();
+
+  $this->actingAs($user);
+
+  Volt::test('restaurant-lists.show', ['restaurantList' => $list])
+    ->call('toggleInRoulette', $place->id);
+
+  expect($place->fresh()->in_roulette)->toBeFalse();
+
+  Volt::test('restaurant-lists.show', ['restaurantList' => $list])
+    ->call('toggleInRoulette', $place->id);
+
+  expect($place->fresh()->in_roulette)->toBeTrue();
+});

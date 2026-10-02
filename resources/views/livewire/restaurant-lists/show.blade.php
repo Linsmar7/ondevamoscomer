@@ -71,7 +71,7 @@ new #[Layout('layouts.app')] class extends Component {
     $places = $placesQuery->get();
 
     // Candidates for the roulette wheel based on roulette filters
-    $rouletteQuery = $list->places();
+    $rouletteQuery = $list->places()->where('in_roulette', true);
     if ($this->rouletteStatusFilter === 'not_visited') {
       $rouletteQuery->where('visited', false);
     }
@@ -79,7 +79,7 @@ new #[Layout('layouts.app')] class extends Component {
       $rouletteQuery->where('price_range', $this->roulettePriceFilter);
     }
     $rouletteCandidates = $rouletteQuery->orderBy('id')
-      ->get(['id', 'name', 'price_range', 'address', 'description', 'google_maps_url', 'visited'])
+      ->get(['id', 'name', 'price_range', 'address', 'description', 'google_maps_url', 'visited', 'in_roulette'])
       ->map(fn ($p) => [
         'id' => $p->id,
         'name' => $p->name,
@@ -89,6 +89,7 @@ new #[Layout('layouts.app')] class extends Component {
         'google_maps_url' => $p->google_maps_url,
         'calendar_url' => $p->googleCalendarUrl(),
         'visited' => (bool) $p->visited,
+        'in_roulette' => (bool) $p->in_roulette,
       ])
       ->values();
 
@@ -116,6 +117,21 @@ new #[Layout('layouts.app')] class extends Component {
       'mostPickedPlace' => $mostPickedPlace,
       'priceRanges' => PriceRange::cases(),
     ];
+  }
+
+  /**
+   * Toggle whether a place is included in the roulette wheel.
+   */
+  public function toggleInRoulette(int $placeId): void {
+    $place = Place::where('restaurant_list_id', $this->listId)->findOrFail($placeId);
+    $this->authorize('update', $place);
+
+    $place->in_roulette = ! $place->in_roulette;
+    $place->save();
+
+    if (! $place->in_roulette && $this->pickedPlaceId === $placeId) {
+      $this->pickedPlaceId = null;
+    }
   }
 
   /**
@@ -716,7 +732,7 @@ new #[Layout('layouts.app')] class extends Component {
           <div class="flex items-center justify-between gap-space-sm pb-space-sm border-b border-surface-variant/30">
             <div>
               <h2 class="font-headline-md text-headline-md text-on-surface font-bold">Lugares</h2>
-              <span class="font-body-sm text-body-sm text-on-surface-variant">Restaurantes cadastrados na lista</span>
+              <span class="font-body-sm text-body-sm text-on-surface-variant">Clique no ícone de cada local para incluir/remover da roleta</span>
             </div>
             <button
               type="button"
@@ -752,16 +768,34 @@ new #[Layout('layouts.app')] class extends Component {
             @forelse ($places as $place)
               <div
                 wire:key="place-item-{{ $place->id }}"
-                class="flex items-center justify-between p-space-sm bg-surface-container hover:bg-surface-container-high transition-colors"
+                class="flex items-center justify-between p-space-sm bg-surface-container hover:bg-surface-container-high transition-colors {{ ! $place->in_roulette ? 'opacity-50 bg-surface-container/40' : '' }}"
               >
                 <div class="flex items-center gap-space-sm min-w-0 flex-1">
-                  <div class="w-8 h-8 bg-surface-container-highest flex items-center justify-center text-primary shrink-0">
-                    <span class="material-symbols-outlined text-[18px]">restaurant</span>
-                  </div>
+                  <!-- Toggle In/Out of Roulette Button -->
+                  <button
+                    type="button"
+                    wire:click="toggleInRoulette({{ $place->id }})"
+                    class="w-8 h-8 flex items-center justify-center shrink-0 transition-all cursor-pointer border {{ $place->in_roulette ? 'bg-secondary-container/20 text-secondary border-secondary-container/40 hover:bg-secondary-container/30' : 'bg-surface-container-high text-outline/60 border-surface-variant hover:text-on-surface hover:border-outline' }}"
+                    title="{{ $place->in_roulette ? 'Participando da roleta · Clique para remover da roleta' : 'Fora da roleta · Clique para colocar na roleta' }}"
+                  >
+                    @if ($place->in_roulette)
+                      <span class="material-symbols-outlined text-[19px]">casino</span>
+                    @else
+                      <span class="material-symbols-outlined text-[19px]">block</span>
+                    @endif
+                  </button>
+
                   <div class="flex flex-col min-w-0">
-                    <span class="font-body-md text-body-md text-on-surface font-medium truncate">
-                      {{ $place->name }}
-                    </span>
+                    <div class="flex items-center gap-1.5 min-w-0">
+                      <span class="font-body-md text-body-md text-on-surface font-medium truncate {{ ! $place->in_roulette ? 'line-through text-on-surface-variant' : '' }}">
+                        {{ $place->name }}
+                      </span>
+                      @if (! $place->in_roulette)
+                        <span class="px-1.5 py-0.5 text-[10px] uppercase font-bold tracking-wider bg-surface-container-highest text-outline shrink-0">
+                          Fora da roleta
+                        </span>
+                      @endif
+                    </div>
                     @if ($place->address)
                       <span class="font-body-sm text-body-sm text-outline truncate text-[11px]">
                         {{ $place->address }}

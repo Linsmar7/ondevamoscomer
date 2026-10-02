@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
   'price_range',
   'description',
   'visited',
+  'in_roulette',
   'external_link',
 ])]
 class Place extends Model {
@@ -36,6 +37,7 @@ class Place extends Model {
   protected function casts(): array {
     return [
       'visited' => 'boolean',
+      'in_roulette' => 'boolean',
       'price_range' => PriceRange::class,
     ];
   }

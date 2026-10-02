@@ -29,6 +29,7 @@ class PlaceFactory extends Factory {
       'price_range' => fake()->randomElement(PriceRange::cases()),
       'description' => fake()->sentence(),
       'visited' => fake()->boolean(25),
+      'in_roulette' => true,
       'external_link' => fake()->url(),
     ];
   }
