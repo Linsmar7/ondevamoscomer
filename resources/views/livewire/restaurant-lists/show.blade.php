@@ -78,7 +78,19 @@ new #[Layout('layouts.app')] class extends Component {
     if ($this->roulettePriceFilter !== 'all') {
       $rouletteQuery->where('price_range', $this->roulettePriceFilter);
     }
-    $rouletteCandidates = $rouletteQuery->orderBy('id')->get(['id', 'name', 'price_range', 'address', 'description'])->values();
+    $rouletteCandidates = $rouletteQuery->orderBy('id')
+      ->get(['id', 'name', 'price_range', 'address', 'description', 'google_maps_url', 'visited'])
+      ->map(fn ($p) => [
+        'id' => $p->id,
+        'name' => $p->name,
+        'price_range' => $p->price_range?->value ?? '??',
+        'address' => $p->address,
+        'description' => $p->description,
+        'google_maps_url' => $p->google_maps_url,
+        'calendar_url' => $p->googleCalendarUrl(),
+        'visited' => (bool) $p->visited,
+      ])
+      ->values();
 
     $pickedPlace = $this->pickedPlaceId ? Place::find($this->pickedPlaceId) : null;
 
@@ -234,7 +246,18 @@ new #[Layout('layouts.app')] class extends Component {
     isSpinning: false,
     currentRotation: 0,
     spinsCount: 0,
-    chosenWinner: null,
+    chosenWinner: {{ $pickedPlace ? Js::from([
+      'id' => $pickedPlace->id,
+      'name' => $pickedPlace->name,
+      'price_range' => $pickedPlace->price_range?->value ?? '??',
+      'address' => $pickedPlace->address,
+      'description' => $pickedPlace->description,
+      'google_maps_url' => $pickedPlace->google_maps_url,
+      'calendar_url' => $pickedPlace->googleCalendarUrl(),
+      'visited' => (bool) $pickedPlace->visited,
+    ]) : 'null' }},
+    showWinnerModal: false,
+    pointerBouncing: false,
     copiedShare: false,
 
     init() {
@@ -330,6 +353,8 @@ new #[Layout('layouts.app')] class extends Component {
     spinWheel() {
       if (this.isSpinning || this.candidates.length === 0) return;
       this.isSpinning = true;
+      this.showWinnerModal = false;
+      this.pointerBouncing = false;
 
       const total = this.candidates.length;
       const angleStep = 360 / total;
@@ -350,13 +375,19 @@ new #[Layout('layouts.app')] class extends Component {
         this.isSpinning = false;
         this.spinsCount += 1;
         this.chosenWinner = chosen;
+        this.pointerBouncing = true;
+        this.showWinnerModal = true;
         $wire.selectWinner(chosen.id);
+
+        setTimeout(() => {
+          this.pointerBouncing = false;
+        }, 3000);
 
         if (typeof window.confetti === 'function') {
           window.confetti({
-            particleCount: 120,
-            spread: 80,
-            origin: { y: 0.6 }
+            particleCount: 150,
+            spread: 90,
+            origin: { y: 0.45 }
           });
         }
       }, 4000);
@@ -473,9 +504,31 @@ new #[Layout('layouts.app')] class extends Component {
 
           <!-- The Roulette Disk -->
           <div class="relative w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 my-space-md flex items-center justify-center">
-            <!-- Downward Pointer Arrow -->
-            <div class="absolute -top-3 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center pointer-events-none drop-shadow-md">
-              <div class="w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[22px] border-t-primary-container filter drop-shadow"></div>
+            <!-- Downward Pointer Arrow (Fixed at 12 o'clock / 270°) -->
+            <div
+              class="absolute -top-4 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center pointer-events-none transition-transform"
+              :class="{ 'animate-bounce': pointerBouncing }"
+            >
+              <svg
+                width="40"
+                height="46"
+                viewBox="0 0 40 46"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                class="filter drop-shadow-[0_4px_12px_rgba(244,63,94,0.7)]"
+              >
+                <!-- Indicator Needle Body -->
+                <path
+                  d="M20 44L5 13C2.8 8.8 5.8 4 10.6 4H29.4C34.2 4 37.2 8.8 35 13L20 44Z"
+                  fill="#f43f5e"
+                  stroke="#ffffff"
+                  stroke-width="2.5"
+                  stroke-linejoin="round"
+                />
+                <!-- Center Pivot Pin -->
+                <circle cx="20" cy="14" r="5" fill="#ffffff" />
+                <circle cx="20" cy="14" r="2.5" fill="#f43f5e" />
+              </svg>
             </div>
 
             <!-- Rotating Disk Container -->
@@ -549,52 +602,109 @@ new #[Layout('layouts.app')] class extends Component {
 
           <!-- Winner Announcement Card (Appears after spin or when a place was picked) -->
           <div
-            x-show="!isSpinning && chosenWinner"
+            x-show="!isSpinning && (chosenWinner || {{ $pickedPlace ? 'true' : 'false' }})"
             x-cloak
-            class="bg-surface-container-low p-space-md border border-primary/40 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-space-md w-full"
+            wire:key="winner-announcement-card"
+            class="bg-surface-container-low p-space-md border-2 border-primary/50 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-space-md w-full relative overflow-hidden"
           >
-            <div class="flex flex-col gap-0.5 min-w-0">
-              <span class="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold flex items-center gap-1">
-                <span class="material-symbols-outlined text-base">celebration</span>
-                Restaurante Sorteado!
+            <!-- Highlight bar -->
+            <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-primary via-secondary to-primary"></div>
+
+            <div class="flex flex-col gap-1 min-w-0 pl-1.5">
+              <span class="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-base text-primary animate-pulse">celebration</span>
+                <span>Restaurante Sorteado!</span>
               </span>
-              <div class="font-headline-sm text-headline-sm font-bold text-on-surface truncate" x-text="chosenWinner ? chosenWinner.name : ''"></div>
-              <p class="font-body-sm text-body-sm text-on-surface-variant truncate" x-text="chosenWinner && chosenWinner.address ? `📍 ${chosenWinner.address}` : ''"></p>
+              <div
+                class="font-display-md text-headline-sm sm:text-display-sm font-black text-on-surface tracking-tight truncate text-primary-fixed"
+                x-text="chosenWinner?.name || '{{ addslashes($pickedPlace?->name ?? '') }}'"
+              >
+                {{ $pickedPlace?->name }}
+              </div>
+              <p
+                class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1 truncate"
+                x-show="chosenWinner?.address || '{{ addslashes($pickedPlace?->address ?? '') }}'"
+              >
+                <span class="material-symbols-outlined text-sm shrink-0 text-outline">location_on</span>
+                <span x-text="chosenWinner?.address || '{{ addslashes($pickedPlace?->address ?? '') }}'">
+                  {{ $pickedPlace?->address }}
+                </span>
+              </p>
             </div>
 
             <!-- Winner Actions -->
             <div class="flex flex-wrap items-center gap-space-xs shrink-0">
+              <button
+                type="button"
+                @click="showWinnerModal = true"
+                class="px-space-md py-2 bg-primary/20 hover:bg-primary/30 text-primary text-xs font-bold flex items-center gap-1.5 transition-colors border border-primary/40 cursor-pointer"
+              >
+                <span class="material-symbols-outlined text-sm">visibility</span>
+                <span>Ver Detalhes</span>
+              </button>
+
+              <template x-if="chosenWinner?.calendar_url">
+                <a
+                  :href="chosenWinner.calendar_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="px-space-md py-2 bg-surface-container-high hover:bg-surface-bright text-on-surface text-xs font-semibold flex items-center gap-1.5 transition-colors border border-surface-variant"
+                >
+                  <span class="material-symbols-outlined text-sm text-primary">calendar_today</span>
+                  Agenda
+                </a>
+              </template>
               @if ($pickedPlace)
                 <a
+                  x-show="!chosenWinner?.calendar_url"
                   href="{{ $pickedPlace->googleCalendarUrl() }}"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="px-space-md py-1.5 bg-surface-container-high hover:bg-surface-bright text-on-surface text-xs font-semibold flex items-center gap-1.5 transition-colors border border-surface-variant"
+                  class="px-space-md py-2 bg-surface-container-high hover:bg-surface-bright text-on-surface text-xs font-semibold flex items-center gap-1.5 transition-colors border border-surface-variant"
                 >
                   <span class="material-symbols-outlined text-sm text-primary">calendar_today</span>
-                  Google Agenda
+                  Agenda
                 </a>
-
-                @if ($pickedPlace->google_maps_url)
-                  <a
-                    href="{{ $pickedPlace->google_maps_url }}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="px-space-md py-1.5 bg-surface-container-high hover:bg-surface-bright text-on-surface text-xs font-semibold flex items-center gap-1.5 transition-colors border border-surface-variant"
-                  >
-                    <span class="material-symbols-outlined text-sm text-secondary">map</span>
-                    Maps
-                  </a>
-                @endif
-
-                <button
-                  type="button"
-                  wire:click="toggleVisited({{ $pickedPlace->id }})"
-                  class="px-space-md py-1.5 bg-surface-container-high hover:bg-surface-bright text-xs font-semibold transition-colors border border-surface-variant {{ $pickedPlace->visited ? 'text-primary' : 'text-on-surface-variant' }}"
-                >
-                  {{ $pickedPlace->visited ? '✓ Já Marcado como Fui' : 'Marcar como Fui' }}
-                </button>
               @endif
+
+              <template x-if="chosenWinner?.google_maps_url">
+                <a
+                  :href="chosenWinner.google_maps_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="px-space-md py-2 bg-surface-container-high hover:bg-surface-bright text-on-surface text-xs font-semibold flex items-center gap-1.5 transition-colors border border-surface-variant"
+                >
+                  <span class="material-symbols-outlined text-sm text-secondary">map</span>
+                  Maps
+                </a>
+              </template>
+              @if ($pickedPlace?->google_maps_url)
+                <a
+                  x-show="!chosenWinner?.google_maps_url"
+                  href="{{ $pickedPlace->google_maps_url }}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="px-space-md py-2 bg-surface-container-high hover:bg-surface-bright text-on-surface text-xs font-semibold flex items-center gap-1.5 transition-colors border border-surface-variant"
+                >
+                  <span class="material-symbols-outlined text-sm text-secondary">map</span>
+                  Maps
+                </a>
+              @endif
+
+              <button
+                type="button"
+                @click="
+                  if (chosenWinner && chosenWinner.id) {
+                    $wire.toggleVisited(chosenWinner.id);
+                    chosenWinner.visited = !chosenWinner.visited;
+                  } else if ({{ $pickedPlace ? $pickedPlace->id : 'null' }}) {
+                    $wire.toggleVisited({{ $pickedPlace ? $pickedPlace->id : 'null' }});
+                  }
+                "
+                class="px-space-md py-2 bg-surface-container-high hover:bg-surface-bright text-xs font-semibold transition-colors border border-surface-variant text-on-surface cursor-pointer"
+              >
+                <span x-text="(chosenWinner?.visited ?? {{ $pickedPlace?->visited ? 'true' : 'false' }}) ? '✓ Já Fui' : 'Marcar como Fui'"></span>
+              </button>
             </div>
           </div>
         </div>
@@ -893,4 +1003,107 @@ new #[Layout('layouts.app')] class extends Component {
       </div>
     </div>
   @endif
+
+  <!-- Winner Celebration Modal (Opens automatically on spin completion) -->
+  <div
+    x-show="showWinnerModal"
+    x-cloak
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+    @keydown.escape.window="showWinnerModal = false"
+  >
+    <div
+      class="bg-surface-container-lowest border-2 border-primary/50 shadow-2xl max-w-lg w-full p-space-xl relative flex flex-col items-center text-center"
+      @click.away="showWinnerModal = false"
+    >
+      <!-- Close button on top-right -->
+      <button
+        type="button"
+        @click="showWinnerModal = false"
+        class="absolute top-4 right-4 text-outline hover:text-on-surface transition-colors cursor-pointer"
+      >
+        <span class="material-symbols-outlined text-xl">close</span>
+      </button>
+
+      <!-- Celebration Icon -->
+      <div class="w-16 h-16 rounded-full bg-secondary-container/20 border-2 border-secondary-container flex items-center justify-center text-secondary mb-space-md animate-bounce">
+        <span class="material-symbols-outlined text-3xl">celebration</span>
+      </div>
+
+      <span class="font-label-sm text-label-sm uppercase tracking-widest text-primary font-bold mb-1">
+        🎉 Temos um Vencedor! 🎉
+      </span>
+
+      <h2
+        class="font-display-lg text-display-lg-mobile sm:text-display-lg font-black text-on-surface tracking-tight mb-space-xs text-primary-fixed"
+        x-text="chosenWinner?.name || '{{ addslashes($pickedPlace?->name ?? '') }}'"
+      >
+        {{ $pickedPlace?->name }}
+      </h2>
+
+      <!-- Price & Address Badges -->
+      <div class="flex flex-wrap items-center justify-center gap-2 mb-space-md">
+        <template x-if="chosenWinner?.price_range">
+          <span class="px-2.5 py-0.5 bg-surface-container-high text-primary font-semibold text-xs border border-surface-variant" x-text="chosenWinner.price_range"></span>
+        </template>
+        <template x-if="chosenWinner?.address">
+          <span class="px-2.5 py-0.5 bg-surface-container text-on-surface-variant text-xs flex items-center gap-1 border border-surface-variant">
+            <span class="material-symbols-outlined text-xs">location_on</span>
+            <span x-text="chosenWinner.address"></span>
+          </span>
+        </template>
+      </div>
+
+      <!-- Description / Tips if available -->
+      <template x-if="chosenWinner?.description">
+        <p class="font-body-md text-body-md text-on-surface-variant mb-space-lg bg-surface-container/50 p-space-sm border border-surface-variant/40 w-full" x-text="chosenWinner.description"></p>
+      </template>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-space-sm w-full mb-space-md">
+        <template x-if="chosenWinner?.google_maps_url">
+          <a
+            :href="chosenWinner.google_maps_url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="w-full sm:w-auto px-space-lg py-2.5 bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-2 border border-surface-variant transition-colors"
+          >
+            <span class="material-symbols-outlined text-base text-secondary">map</span>
+            <span>Ver no Google Maps</span>
+          </a>
+        </template>
+
+        <template x-if="chosenWinner?.calendar_url">
+          <a
+            :href="chosenWinner.calendar_url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="w-full sm:w-auto px-space-lg py-2.5 bg-primary hover:bg-primary/90 text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-2 shadow-md transition-colors"
+          >
+            <span class="material-symbols-outlined text-base">calendar_today</span>
+            <span>Adicionar à Agenda</span>
+          </a>
+        </template>
+      </div>
+
+      <!-- Share Button & Close -->
+      <div class="flex items-center gap-space-sm w-full pt-space-md border-t border-surface-variant/30 justify-between">
+        <button
+          type="button"
+          @click="copyShareText()"
+          class="text-xs font-semibold text-outline hover:text-primary flex items-center gap-1 cursor-pointer transition-colors"
+        >
+          <span class="material-symbols-outlined text-sm">share</span>
+          <span x-text="copiedShare ? 'Copiado para o WhatsApp! 🚀' : 'Compartilhar com a galera'"></span>
+        </button>
+
+        <button
+          type="button"
+          @click="showWinnerModal = false"
+          class="px-space-md py-1.5 bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold border border-surface-variant cursor-pointer transition-colors"
+        >
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
